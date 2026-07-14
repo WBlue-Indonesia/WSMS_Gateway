@@ -96,7 +96,8 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: v
 .sidebar {
   width: var(--sidebar-w); flex: none; background: var(--panel);
   border-right: 1px solid var(--line); display: flex; flex-direction: column;
-  padding: 20px 0 14px; position: sticky; top: 0; height: 100vh; height: 100dvh; z-index: 40;
+  padding: 20px 0 14px; position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh;
+  overflow-y: auto; z-index: 40;
 }
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
 .sidebar nav a {
@@ -127,7 +128,7 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: v
 :root[data-theme="dark"] .theme-toggle .i-moon { display: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .theme-toggle .i-sun { display: block; } :root:not([data-theme="light"]) .theme-toggle .i-moon { display: none; } }
 
-.main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; margin-left: var(--sidebar-w); }
 .content { padding: 26px 30px 40px; width: 100%; max-width: 1320px; margin: 0 auto; }
 
 /* mobile app bar + bottom nav (hidden on desktop) */
@@ -352,6 +353,7 @@ table.params td[data-label="Description"] { color: var(--fg2); }
 @media (max-width: 860px) {
   :root { --content-pad: 16px; }
   .sidebar { display: none; }
+  .main-col { margin-left: 0; } /* no left rail on mobile */
 
   .topbar {
     display: flex; align-items: center; gap: 12px; padding: 12px 16px;

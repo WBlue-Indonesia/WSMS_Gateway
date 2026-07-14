@@ -25,16 +25,17 @@
       </form>
     </div>
   </div>
+  <div class="table-wrap">
   <table class="grid">
     <thead><tr><th>Key prefix</th><th>Scopes</th><th>Signing</th><th>Status</th><th>Last used</th><th></th></tr></thead>
     <tbody>
     {{range .Keys}}
       <tr>
-        <td class="mono">wsms_{{.Prefix}}.••••</td>
-        <td class="mono small">{{.Scopes}}</td>
-        <td>{{if .SigningSecretEnc}}<span class="pill ok">on</span>{{else}}<span class="pill muted">off</span>{{end}}</td>
-        <td>{{if .Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">revoked</span>{{end}}</td>
-        <td class="mono">{{fmtTimeP .LastUsedAt}}</td>
+        <td class="mono" data-label="Key">wsms_{{.Prefix}}.••••</td>
+        <td class="mono small" data-label="Scopes">{{.Scopes}}</td>
+        <td data-label="Signing">{{if .SigningSecretEnc}}<span class="pill ok">on</span>{{else}}<span class="pill muted">off</span>{{end}}</td>
+        <td data-label="Status">{{if .Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">revoked</span>{{end}}</td>
+        <td class="mono" data-label="Last used">{{fmtTimeP .LastUsedAt}}</td>
         <td>
           <form method="post" action="/admin/keys/{{.ID}}/enable-signing" style="display:inline">
             <button type="submit">{{if .SigningSecretEnc}}Rotate{{else}}Enable{{end}} signing</button>
@@ -46,6 +47,7 @@
     {{end}}
     </tbody>
   </table>
+  </div>
 </div>
 {{else}}
 <div class="card"><p class="muted">No clients yet.</p></div>

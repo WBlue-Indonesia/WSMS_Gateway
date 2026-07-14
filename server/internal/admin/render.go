@@ -27,7 +27,7 @@ var tmplFS embed.FS
 var staticFS embed.FS
 
 // Full pages are wrapped in layout.html; fragments (htmx partials) render bare.
-var fullPages = []string{"login", "overview", "messages", "fleet", "enrollment", "clients", "apidocs"}
+var fullPages = []string{"login", "overview", "messages", "compose", "fleet", "enrollment", "clients", "apidocs"}
 var fragments = []string{"message_detail", "messages_rows", "unmask"}
 
 var (

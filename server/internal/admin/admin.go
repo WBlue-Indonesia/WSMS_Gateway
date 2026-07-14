@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nizwar/wsms-gateway/server/internal/config"
 	"github.com/nizwar/wsms-gateway/server/internal/models"
+	"github.com/nizwar/wsms-gateway/server/internal/router"
 	"github.com/nizwar/wsms-gateway/server/internal/secret"
 	"github.com/nizwar/wsms-gateway/server/internal/ws"
 	"gorm.io/gorm"
@@ -27,17 +28,18 @@ type session struct {
 }
 
 type Server struct {
-	db  *gorm.DB
-	hub *ws.Hub
-	cfg config.Config
+	db     *gorm.DB
+	hub    *ws.Hub
+	cfg    config.Config
+	engine *router.Engine
 
 	mu       sync.RWMutex
 	sessions map[string]session
 }
 
-func New(db *gorm.DB, hub *ws.Hub, cfg config.Config) *Server {
+func New(db *gorm.DB, hub *ws.Hub, cfg config.Config, engine *router.Engine) *Server {
 	buildTemplates()
-	return &Server{db: db, hub: hub, cfg: cfg, sessions: map[string]session{}}
+	return &Server{db: db, hub: hub, cfg: cfg, engine: engine, sessions: map[string]session{}}
 }
 
 // Mount wires the admin routes onto the given gin engine and bootstraps the owner user.
@@ -55,6 +57,8 @@ func (s *Server) Mount(r *gin.Engine) {
 	a.GET("", s.overview)
 	a.GET("/", s.overview)
 	a.GET("/messages", s.messagesPage)
+	a.GET("/compose", s.composePage)
+	a.POST("/compose", s.sendCompose)
 	a.GET("/messages/rows", s.messagesRows)
 	a.GET("/messages/:id", s.messageDetail)
 	a.POST("/messages/:id/unmask", s.unmaskMSISDN)

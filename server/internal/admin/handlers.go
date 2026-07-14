@@ -2,10 +2,13 @@ package admin
 
 import (
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nizwar/wsms-gateway/server/internal/models"
+	"github.com/nizwar/wsms-gateway/server/internal/router"
+	"github.com/nizwar/wsms-gateway/server/internal/smstext"
 )
 
 // ---- Overview ----
@@ -105,6 +108,67 @@ func (s *Server) queryMessages(c *gin.Context) []models.Message {
 	var msgs []models.Message
 	q.Find(&msgs)
 	return msgs
+}
+
+// composePage renders the "send SMS from the console" form.
+func (s *Server) composePage(c *gin.Context) {
+	renderPage(c, "compose", gin.H{"Error": c.Query("error"), "Sent": c.Query("sent")})
+}
+
+// sendCompose queues a message submitted by an operator from the admin console. It runs
+// the same normalization/operator-detection/segmentation as the public API and attributes
+// the send to a dedicated "admin-console" client.
+func (s *Server) sendCompose(c *gin.Context) {
+	if r := s.role(c); r != "owner" && r != "operator" {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	to := c.PostForm("to")
+	body := c.PostForm("message")
+	canonical, ok := router.NormalizeMSISDN(to)
+	if !ok || body == "" {
+		c.Redirect(http.StatusSeeOther, "/admin/compose?error="+url.QueryEscape("invalid number or empty message"))
+		return
+	}
+	policy := models.RoutingPolicy(c.PostForm("routing_policy"))
+	switch policy {
+	case models.PolicyOnNetPref, models.PolicyOnNetStrict, models.PolicyAny:
+	default:
+		policy = models.PolicyOnNetPref
+	}
+	ttl := s.cfg.DefaultTTL
+	if v := c.PostForm("ttl_seconds"); v != "" {
+		if n, err := time.ParseDuration(v + "s"); err == nil && n > 0 {
+			ttl = n
+		}
+	}
+
+	enc, segs := smstext.Analyze(body)
+	op := s.engine.Detect(canonical)
+	msg := models.Message{
+		ID: models.NewID(), ClientID: s.adminClientID(), TargetMSISDN: canonical,
+		TargetOperator: op, Body: body, Encoding: models.Encoding(enc), Segments: segs,
+		Status: models.MsgQueued, RoutingPolicy: policy, MaxAttempts: 3,
+		ExpiresAt: time.Now().Add(ttl),
+	}
+	if err := s.db.Create(&msg).Error; err != nil {
+		c.Redirect(http.StatusSeeOther, "/admin/compose?error="+url.QueryEscape("could not queue"))
+		return
+	}
+	s.db.Create(&models.MessageEvent{ID: models.NewID(), MessageID: msg.ID, EventType: models.EvSubmitted, CreatedAt: time.Now()})
+	s.audit(c, "message.send", "message", msg.ID, string(op))
+	c.Redirect(http.StatusSeeOther, "/admin/compose?sent="+url.QueryEscape(string(op)))
+}
+
+// adminClientID returns (creating if needed) the client that owns console-sent messages.
+func (s *Server) adminClientID() string {
+	var cl models.Client
+	if err := s.db.Where("name = ?", "admin-console").First(&cl).Error; err == nil {
+		return cl.ID
+	}
+	cl = models.Client{ID: models.NewID(), Name: "admin-console", Active: true}
+	s.db.Create(&cl)
+	return cl.ID
 }
 
 func (s *Server) messageDetail(c *gin.Context) {

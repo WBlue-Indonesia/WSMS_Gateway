@@ -18,14 +18,16 @@
 </form>
 
 <div class="split">
-  <table class="grid">
-    <thead>
-      <tr><th>Time</th><th>To</th><th>Operator</th><th>Status</th><th>Seg</th><th></th></tr>
-    </thead>
-    <tbody id="rows">
-      {{template "rows" .}}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="grid">
+      <thead>
+        <tr><th>Time</th><th>To</th><th>Operator</th><th>Status</th><th>Seg</th><th></th></tr>
+      </thead>
+      <tbody id="rows">
+        {{template "rows" .}}
+      </tbody>
+    </table>
+  </div>
   <aside id="drawer" class="drawer"><p class="muted">Select a message to see its lifecycle.</p></aside>
 </div>
 {{end}}

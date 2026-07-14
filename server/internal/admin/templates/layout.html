@@ -2,19 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>WSMS Admin</title>
   <link rel="stylesheet" href="/admin/static/admin.css">
   <script src="/admin/static/htmx.min.js" defer></script>
 </head>
 <body>
 {{if .User}}
+<input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
 <div class="shell">
+  <label for="nav-toggle" class="nav-scrim" aria-hidden="true"></label>
   <aside class="sidebar">
     <div class="brand">WSMS<span>Gateway</span></div>
     <nav>
       <a href="/admin" class="{{if eq .Page "overview"}}active{{end}}">Overview</a>
       <a href="/admin/messages" class="{{if eq .Page "messages"}}active{{end}}">Messages</a>
+      <a href="/admin/compose" class="{{if eq .Page "compose"}}active{{end}}">Send SMS</a>
       <a href="/admin/fleet" class="{{if eq .Page "fleet"}}active{{end}}">Fleet</a>
       <a href="/admin/clients" class="{{if eq .Page "clients"}}active{{end}}">Clients &amp; Keys</a>
       <a href="/admin/enrollment" class="{{if eq .Page "enrollment"}}active{{end}}">Enrollment</a>
@@ -25,9 +28,17 @@
       <button type="submit">Log out</button>
     </form>
   </aside>
-  <main class="content">
-    {{template "content" .}}
-  </main>
+  <div class="main-col">
+    <header class="topbar">
+      <label for="nav-toggle" class="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </label>
+      <div class="brand-sm">WSMS<span>Gateway</span></div>
+    </header>
+    <main class="content">
+      {{template "content" .}}
+    </main>
+  </div>
 </div>
 {{else}}
   <main class="auth">{{template "content" .}}</main>

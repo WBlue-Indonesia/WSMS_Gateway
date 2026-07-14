@@ -15,26 +15,28 @@
       {{if gt .D.WakeMisses 0}}<span class="pill warn">wake-misses {{.D.WakeMisses}}</span>{{end}}
     </div>
   </div>
+  <div class="table-wrap">
   <table class="grid">
     <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota</th><th>Health</th></tr></thead>
     <tbody>
     {{range .Sims}}
       <tr>
-        <td>{{.Slot}} <span class="muted">sub {{.SubscriptionID}}</span></td>
-        <td>{{.Operator}}{{if .OperatorLocked}} 🔒{{end}}</td>
-        <td class="mono">{{if .MSISDN}}{{maskMSISDN .MSISDN}}{{else}}—{{end}}</td>
-        <td>{{template "statusPill" (printf "%s" .Status)}}</td>
-        <td>
+        <td data-label="Slot">{{.Slot}} <span class="muted">sub {{.SubscriptionID}}</span></td>
+        <td data-label="Operator">{{.Operator}}{{if .OperatorLocked}} 🔒{{end}}</td>
+        <td class="mono" data-label="MSISDN">{{if .MSISDN}}{{maskMSISDN .MSISDN}}{{else}}—{{end}}</td>
+        <td data-label="Status">{{template "statusPill" (printf "%s" .Status)}}</td>
+        <td data-label="Quota">
           <div class="quota"><div class="quota-bar" style="width:{{quotaPct .SentToday .DailyQuota}}%"></div></div>
           <span class="mono muted">{{.SentToday}}/{{.DailyQuota}}</span>
         </td>
-        <td class="num">{{.HealthScore}}</td>
+        <td class="num" data-label="Health">{{.HealthScore}}</td>
       </tr>
     {{else}}
       <tr><td colspan="6" class="muted">no SIMs reported</td></tr>
     {{end}}
     </tbody>
   </table>
+  </div>
 </div>
 {{else}}
 <div class="card"><p class="muted">No devices enrolled yet. Issue an enrollment token under <a href="/admin/enrollment">Enrollment</a>.</p></div>

@@ -1,0 +1,9 @@
+node_modules/
+build/
+.dart_tool/
+*.log
+.env
+.env.*
+bin/
+tmp/
+.DS_Store

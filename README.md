@@ -35,9 +35,24 @@ Start with **[`docs/00-overview.md`](docs/00-overview.md)**.
 | [08-amendments](docs/08-amendments.md) | **Normative** fixes for the audit findings — supersedes referenced sections |
 | [09-audit-findings](docs/09-audit-findings.md) | Adversarial audit record (traceability → 08) |
 
+## Repository structure
+
+| Path | What |
+|------|------|
+| [`docs/`](docs) | The full design (00–09). Start at `00-overview.md`. |
+| [`server/`](server) | Go backend — REST API, WebSocket hub, operator-aware dispatcher. Compiles, tested, verified end-to-end against Postgres. See [`server/README.md`](server/README.md). |
+| [`app/`](app) | Flutter Android sender app — dual-SIM `SmsManager` bridge, WebSocket client, enrollment. See [`app/README.md`](app/README.md). |
+
 ## Status
 
-Planning / design phase. No implementation code yet — these docs are the blueprint.
+Design complete (docs 00–09) + working MVP:
+
+- **Server** — operator detection, on-net routing + random fallback, atomic quota
+  reserve, full delivery lifecycle (DISPATCHED→ACK→SENT→DELIVERED), idempotency —
+  all verified live against Postgres with a simulated device fleet.
+- **App** — Kotlin telephony channel + Dart WS gateway + enrollment; analyzes clean.
+
+Not yet built: admin dashboard (doc 07), FCM wake, foreground-service isolate, webhooks.
 
 ## Stack
 

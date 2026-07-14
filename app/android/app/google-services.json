@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "wsms-placeholder",
-    "storage_bucket": "wsms-placeholder.appspot.com"
+    "project_number": "577787501640",
+    "project_id": "wblue-sms-gateway",
+    "storage_bucket": "wblue-sms-gateway.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:577787501640:android:10d23aa11285b80111cc7d",
         "android_client_info": {
           "package_name": "id.wblue.wsms_sender"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyPLACEHOLDER_REPLACE_WITH_REAL_KEY0000"
+          "current_key": "AIzaSyC6X6Bart3c6q9fB6bhqSyq1Q3Zzcs-7BA"
         }
       ],
       "services": {

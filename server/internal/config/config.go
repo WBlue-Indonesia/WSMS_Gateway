@@ -30,6 +30,10 @@ type Config struct {
 	// FCM wake (optional): path to a Firebase service-account JSON + project id.
 	FCMCredentialsFile string
 	FCMProjectID       string
+
+	// PublicURL is the externally-reachable base URL devices should connect to
+	// (used in the pairing QR). If empty, it is derived from the admin request host.
+	PublicURL string
 }
 
 // Load reads .env (if present) then the environment, applying sane defaults.
@@ -47,6 +51,7 @@ func Load() Config {
 		WebhookMaxAttempts: envInt("WSMS_WEBHOOK_MAX_ATTEMPTS", 6),
 		FCMCredentialsFile: os.Getenv("WSMS_FCM_CREDENTIALS"),
 		FCMProjectID:       os.Getenv("WSMS_FCM_PROJECT_ID"),
+		PublicURL:          os.Getenv("WSMS_PUBLIC_URL"),
 	}
 	if raw := os.Getenv("WSMS_SECRET_KEY"); len(raw) == 64 {
 		if b, err := hex.DecodeString(raw); err == nil {

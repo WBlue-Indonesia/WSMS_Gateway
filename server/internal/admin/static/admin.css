@@ -118,6 +118,10 @@ dl.kv dd { margin: 0; word-break: break-word; }
 /* misc */
 .callout { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 14px; margin: 14px 0; }
 .token { display: block; background: var(--bg); padding: 8px 10px; border-radius: 6px; margin: 6px 0; word-break: break-all; color: var(--warn); }
+.callout.pair { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.pair-qr { text-align: center; }
+.pair-qr img { background: #fff; padding: 8px; border-radius: 10px; display: block; }
+.pair-manual { flex: 1; min-width: 220px; }
 .inline-form { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
 .inline-form input { flex: 1 1 200px; min-width: 0; }
 .body-sample { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px; overflow-x: auto; font-size: 12px; }

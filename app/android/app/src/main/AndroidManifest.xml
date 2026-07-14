@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- QR pairing scanner -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+
     <!-- Telephony: send SMS + enumerate dual-SIM subscriptions (docs/05 §4) -->
     <uses-permission android:name="android.permission.SEND_SMS"/>
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>

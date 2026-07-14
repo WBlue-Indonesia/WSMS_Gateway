@@ -3,10 +3,17 @@
 <p class="muted">Issue a single-use token (valid 24h) to pair a new phone.</p>
 
 {{if .Issued}}
-<div class="callout">
-  <strong>New enrollment token — shown once:</strong>
-  <code class="token">{{.Issued}}</code>
-  <p class="muted">Enter it in the app's pairing screen together with the server URL.</p>
+<div class="callout pair">
+  <div class="pair-qr">
+    {{if .QR}}<img src="{{.QR}}" alt="Pairing QR" width="220" height="220">{{end}}
+    <div class="muted small">Scan with the app</div>
+  </div>
+  <div class="pair-manual">
+    <strong>New enrollment token — shown once</strong>
+    <p class="muted">Open the app → <em>Scan QR</em> and point it here. Or enter the server URL + token below manually.</p>
+    <code class="token">{{.Issued}}</code>
+    <p class="muted small">One-time use · valid 24h</p>
+  </div>
 </div>
 {{end}}
 

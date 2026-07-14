@@ -221,7 +221,12 @@ func (s *Server) fleet(c *gin.Context) {
 func (s *Server) enrollmentPage(c *gin.Context) {
 	var tokens []models.EnrollmentToken
 	s.db.Order("created_at desc").Limit(50).Find(&tokens)
-	renderPage(c, "enrollment", gin.H{"Tokens": tokens, "Issued": c.Query("issued")})
+	data := gin.H{"Tokens": tokens, "Issued": c.Query("issued")}
+	if issued := c.Query("issued"); issued != "" {
+		_, qr := pairQR(s.baseURL(c), issued)
+		data["QR"] = qr
+	}
+	renderPage(c, "enrollment", data)
 }
 
 func (s *Server) issueEnrollment(c *gin.Context) {

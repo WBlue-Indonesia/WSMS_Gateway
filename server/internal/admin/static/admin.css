@@ -49,6 +49,10 @@ button, .link { background: var(--accent2); color: var(--fg); border: 1px solid 
   padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; }
 button:hover { background: #46566e; }
 .link { background: transparent; border: none; color: var(--accent); padding: 0 4px; }
+button.danger { background: rgba(232,96,76,.18); border-color: var(--bad); color: var(--bad); }
+button.danger:hover { background: rgba(232,96,76,.3); }
+.sim-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.sim-actions button { padding: 5px 9px; font-size: 12px; }
 
 /* tiles */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin: 16px 0; }

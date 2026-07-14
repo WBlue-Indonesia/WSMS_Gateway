@@ -141,6 +141,9 @@ class Gateway {
       case FrameType.ping:
         _send(FrameType.heartbeat, null);
         break;
+      case FrameType.config:
+        if (data['action'] == 'report_sims') reportSims();
+        break;
     }
   }
 

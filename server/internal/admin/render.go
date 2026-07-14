@@ -1,7 +1,9 @@
 package admin
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -11,6 +13,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// assetVer is a content hash of the CSS, appended as ?v= to asset URLs so a proxy
+// or browser can never serve a stale stylesheet after a redeploy.
+var assetVer = "0"
 
 func mustSub() fs.FS {
 	sub, err := fs.Sub(staticFS, "static")
@@ -60,6 +66,10 @@ var funcs = template.FuncMap{
 }
 
 func buildTemplates() {
+	if b, err := staticFS.ReadFile("static/admin.css"); err == nil {
+		sum := sha256.Sum256(b)
+		assetVer = hex.EncodeToString(sum[:])[:10]
+	}
 	pageTmpls = map[string]*template.Template{}
 	for _, p := range fullPages {
 		t := template.New("layout.html").Funcs(funcs)
@@ -79,6 +89,7 @@ func renderPage(c *gin.Context, name string, data gin.H) {
 		data = gin.H{}
 	}
 	data["Page"] = name
+	data["AssetVer"] = assetVer
 	if u, ok := c.Get("admin_user"); ok {
 		data["User"] = u
 	}

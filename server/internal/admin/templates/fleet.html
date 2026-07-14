@@ -13,11 +13,12 @@
       {{if .Online}}<span class="pill ok">online</span>{{else}}<span class="pill bad">offline</span>{{end}}
       <span class="muted">seen {{since .D.LastSeenAt}}</span>
       {{if gt .D.WakeMisses 0}}<span class="pill warn">wake-misses {{.D.WakeMisses}}</span>{{end}}
+      {{if .Online}}<form method="post" action="/admin/devices/{{.D.ID}}/rescan" style="display:inline"><button type="submit">Re-scan SIMs</button></form>{{end}}
     </div>
   </div>
   <div class="table-wrap">
   <table class="grid">
-    <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota</th><th>Health</th></tr></thead>
+    <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota</th><th>Health</th><th>Actions</th></tr></thead>
     <tbody>
     {{range .Sims}}
       <tr>
@@ -30,9 +31,17 @@
           <span class="mono muted">{{.SentToday}}/{{.DailyQuota}}</span>
         </td>
         <td class="num" data-label="Health">{{.HealthScore}}</td>
+        <td data-label="Actions" class="sim-actions">
+          {{if eq (printf "%s" .Status) "DISABLED"}}
+            <form method="post" action="/admin/sims/{{.ID}}/enable" style="display:inline"><button type="submit">Enable</button></form>
+          {{else}}
+            <form method="post" action="/admin/sims/{{.ID}}/cooldown" style="display:inline"><button type="submit">Cooldown</button></form>
+            <form method="post" action="/admin/sims/{{.ID}}/disable" style="display:inline"><button type="submit">Disable</button></form>
+          {{end}}
+        </td>
       </tr>
     {{else}}
-      <tr><td colspan="6" class="muted">no SIMs reported</td></tr>
+      <tr><td colspan="7" class="muted">no SIMs reported</td></tr>
     {{end}}
     </tbody>
   </table>

@@ -24,6 +24,13 @@
 
 <div class="body-box">{{.M.Body}}</div>
 
+{{if or (eq .Role "owner") (eq .Role "operator")}}
+  {{if not (or (eq (printf "%s" .M.Status) "DELIVERED") (eq (printf "%s" .M.Status) "SENT") (eq (printf "%s" .M.Status) "SENT_UNCONFIRMED") (eq (printf "%s" .M.Status) "FAILED") (eq (printf "%s" .M.Status) "EXPIRED") (eq (printf "%s" .M.Status) "CANCELLED"))}}
+    <button hx-post="/admin/messages/{{.M.ID}}/cancel" hx-target="#drawer" hx-swap="innerHTML"
+            class="danger" style="margin-bottom:12px">Cancel message</button>
+  {{end}}
+{{end}}
+
 <h3>Lifecycle</h3>
 <ol class="timeline">
 {{range .Events}}

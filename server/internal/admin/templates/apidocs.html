@@ -1,37 +1,142 @@
 {{define "content"}}
-<h1>API Documentation</h1>
-<p class="muted">
-  Self-hosted reference. Machine-readable spec:
-  <a href="/admin/openapi.json" target="_blank">openapi.json</a> (import into Postman / Insomnia).
-</p>
+<div class="docs">
+<div class="page-head">
+  <div>
+    <h1>API Documentation</h1>
+    <p class="muted">Self-hosted reference for the WSMS Gateway REST API.</p>
+  </div>
+  <a class="btn" href="/admin/openapi.json" target="_blank" rel="noopener">openapi.json ↗</a>
+</div>
 
 <div class="callout">
-  <strong>Auth.</strong> Client endpoints use a bearer token:
-  <code>Authorization: Bearer wsms_&lt;prefix&gt;.&lt;secret&gt;</code>.
-  Devices use <code>Bearer dev_&lt;device_id&gt;.&lt;device_secret&gt;</code> on the WebSocket.
+  <strong>Base URL</strong>
+  <code class="token">{{.BaseURL}}</code>
+  <p class="muted small">All paths below are relative to this base. Import the machine-readable
+    <a href="/admin/openapi.json" target="_blank" rel="noopener">openapi.json</a> into Postman or Insomnia to try requests.</p>
 </div>
 
-<div class="table-wrap">
-<table class="grid api">
-  <thead><tr><th>Method</th><th>Path</th><th>Scope</th><th>Description</th></tr></thead>
-  <tbody>
-  {{range .Endpoints}}
-    <tr>
-      <td><span class="method {{lower .Method}}">{{.Method}}</span></td>
-      <td class="mono">{{.Path}}</td>
-      <td class="mono small">{{.Scope}}</td>
-      <td>
-        {{.Desc}}
-        {{if .Body}}<pre class="body-sample">{{.Body}}</pre>{{end}}
-      </td>
-    </tr>
+<nav class="doc-nav" aria-label="API sections">
+  <a href="#auth">Authentication</a>
+  {{range .Groups}}<a href="#g-{{.Slug}}">{{.Name}}</a>{{end}}
+  <a href="#errors">Errors</a>
+  <a href="#lifecycle">Lifecycle</a>
+</nav>
+
+<!-- Authentication -->
+<section id="auth" class="doc-section">
+  <h2>Authentication</h2>
+  <div class="cols">
+    <div class="card">
+      <h3 class="flush">Client API key</h3>
+      <p class="muted small">Every <code>/v1</code> client endpoint requires a bearer token.</p>
+      <pre class="body-sample">Authorization: Bearer wsms_&lt;prefix&gt;.&lt;secret&gt;</pre>
+      <p class="muted small">Create and revoke keys under <a href="/admin/clients">Clients &amp; Keys</a>. Only a hash is
+        stored — the secret is shown once, at creation. A key carries scopes (e.g. <code>messages:write</code>).</p>
+    </div>
+    <div class="card">
+      <h3 class="flush">Optional request signing (HMAC)</h3>
+      <p class="muted small">If a key has signing enabled, add these headers to every request:</p>
+      <pre class="body-sample">X-WSMS-Timestamp: 1752537600
+X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</pre>
+      <p class="muted small">The timestamp must be within ±5 minutes of server time.</p>
+    </div>
+  </div>
+  <p class="muted small">Sender phones authenticate on the WebSocket with
+    <code>Authorization: Bearer dev_&lt;device_id&gt;.&lt;device_secret&gt;</code>.
+    Rate limit: <strong>{{.RateLimit}}</strong> — over-limit bursts get <code>429</code> with <code>Retry-After</code>.</p>
+</section>
+
+<!-- Endpoint groups -->
+{{range .Groups}}
+<section id="g-{{.Slug}}" class="doc-section">
+  <h2>{{.Name}}</h2>
+  <p class="muted">{{.Desc}}</p>
+
+  {{range .Rows}}
+  <article class="endpoint">
+    <div class="ep-head">
+      <span class="method {{lower .Method}}">{{.Method}}</span>
+      <span class="ep-path mono">{{.Path}}</span>
+      {{if .Scope}}<span class="pill accent">{{.Scope}}</span>{{else}}<span class="pill muted">no scope</span>{{end}}
+    </div>
+    <p class="ep-desc">{{.Desc}}</p>
+
+    {{if .Params}}
+    <div class="table-wrap">
+      <table class="grid params">
+        <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+        <tbody>
+        {{range .Params}}
+          <tr>
+            <td class="mono" data-label="Field">{{.Name}}</td>
+            <td data-label="Type"><span class="pill muted plain">{{.Type}}</span></td>
+            <td data-label="Required">{{.Required}}</td>
+            <td data-label="Description">{{.Desc}}</td>
+          </tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+
+    {{if or .Req .Resp}}
+    <div class="ep-io">
+      {{if .Req}}<div class="io-block"><span class="io-label">Request body</span><pre class="body-sample">{{.Req}}</pre></div>{{end}}
+      {{if .Resp}}<div class="io-block"><span class="io-label">Response</span><pre class="body-sample">{{.Resp}}</pre></div>{{end}}
+    </div>
+    {{end}}
+
+    {{if .Notes}}
+    <ul class="ep-notes">
+      {{range .Notes}}<li>{{.}}</li>{{end}}
+    </ul>
+    {{end}}
+  </article>
   {{end}}
-  </tbody>
-</table>
-</div>
+</section>
+{{end}}
 
-<h2>Example</h2>
-<pre class="body-sample">curl -X POST $BASE/v1/messages \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+<!-- Errors -->
+<section id="errors" class="doc-section">
+  <h2>Errors &amp; status codes</h2>
+  <p class="muted">Errors return a JSON envelope: <code>{"error":"human-readable reason"}</code>.</p>
+  <div class="table-wrap">
+    <table class="grid">
+      <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+      <tbody>
+      {{range .Codes}}
+        <tr>
+          <td data-label="Code"><span class="pill {{.Kind}}">{{.Code}}</span></td>
+          <td data-label="Meaning">{{.Desc}}</td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Lifecycle -->
+<section id="lifecycle" class="doc-section">
+  <h2>Message lifecycle</h2>
+  <p class="muted">A submitted message moves through these states. <strong>SENT_UNCONFIRMED, DELIVERED, FAILED,
+    EXPIRED,</strong> and <strong>CANCELLED</strong> are terminal.</p>
+  <div class="lifecycle">
+    {{range .Lifecycle}}
+      <div class="life">
+        <span class="pill {{.Kind}}">{{.Name}}</span>
+        <span class="muted small">{{.Desc}}</span>
+      </div>
+    {{end}}
+  </div>
+</section>
+
+<!-- Quick start -->
+<section class="doc-section">
+  <h2>Quick start</h2>
+  <pre class="body-sample">curl -X POST {{.BaseURL}}/v1/messages \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
   -d '{"to":"0812-3456-7890","message":"Kode OTP 123456","ttl_seconds":300}'</pre>
+</section>
+</div>
 {{end}}

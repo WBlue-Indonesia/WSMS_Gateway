@@ -27,7 +27,7 @@ func TestTemplatesParseAndRender(t *testing.T) {
 		"enrollment": {"Tokens": nil, "CanMutate": true},
 		"compose":    {"Error": "", "Sent": ""},
 		"messages":   {"Messages": nil, "Q": "", "Status": "", "Operator": ""},
-		"apidocs":    {"Endpoints": apiEndpoints},
+		"apidocs":    {"Groups": apiGroups, "Codes": apiHTTPCodes, "Lifecycle": apiLifecycle, "BaseURL": "http://localhost:8080", "RateLimit": "5 req/s per client (burst 10)"},
 	}
 	for name, data := range pages {
 		data["Page"] = name

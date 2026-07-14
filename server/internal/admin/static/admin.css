@@ -314,6 +314,31 @@ tr.logrow td[data-label="Time"] { white-space: nowrap; }
 .compose-form button.primary { padding: 14px; font-size: 15px; }
 @media (max-width: 560px) { .compose-form .row2 { grid-template-columns: 1fr; } }
 
+/* ---- API docs --------------------------------------------------------- */
+.doc-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 6px; }
+.doc-nav a { background: var(--panel2); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 13px; font-size: 12.5px; color: var(--fg2); font-weight: 600; }
+.doc-nav a:hover { background: var(--panel3); color: var(--fg); text-decoration: none; }
+.doc-section { margin: 30px 0; scroll-margin-top: 16px; }
+.doc-section > h2 { font-size: 18px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3.flush { margin-top: 0; }
+.endpoint { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 18px; margin: 14px 0; box-shadow: var(--shadow-sm); }
+.ep-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ep-path { font-size: 15px; font-weight: 650; color: var(--fg); word-break: break-all; }
+.ep-desc { margin: 10px 0 0; color: var(--fg2); }
+.ep-io { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; align-items: start; }
+.io-block { min-width: 0; }
+.io-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.io-block .body-sample { margin: 0; }
+.ep-notes { margin: 14px 0 0; padding-left: 18px; }
+.ep-notes li { font-size: 12.5px; color: var(--muted); margin: 5px 0; }
+table.params td[data-label="Description"] { color: var(--fg2); }
+.lifecycle { display: flex; flex-direction: column; gap: 9px; }
+.life { display: flex; align-items: center; gap: 12px; }
+.life > .pill { min-width: 150px; justify-content: flex-start; }
+
 /* ============================================================================
    Responsive — tablet then mobile app shell
    ========================================================================== */
@@ -403,6 +428,11 @@ tr.logrow td[data-label="Time"] { white-space: nowrap; }
   .quota-form, .rename-form { margin-left: 0; }
 
   .callout.pair { justify-content: center; }
+
+  .ep-io { grid-template-columns: 1fr; }
+  .life { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .life > .pill { min-width: 0; }
+  .doc-section > h2 { font-size: 17px; }
 }
 
 @media (min-width: 861px) { .drawer-menu, .nav-scrim, .nav-toggle { display: none; } }

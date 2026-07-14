@@ -1,0 +1,24 @@
+{
+  "name": "WSMS Gateway · Admin",
+  "short_name": "WSMS",
+  "description": "WBlue self-hosted SMS gateway — operator console & fleet monitoring.",
+  "id": "/admin/",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0a0f1c",
+  "theme_color": "#173483",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    { "src": "/admin/static/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/admin/static/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Overview", "url": "/admin/", "description": "Fleet & delivery overview" },
+    { "name": "Message log", "url": "/admin/messages", "description": "Recent messages" },
+    { "name": "Send SMS", "url": "/admin/compose", "description": "Queue a message" },
+    { "name": "Fleet", "url": "/admin/fleet", "description": "Devices & SIM quota" }
+  ]
+}

@@ -1,6 +1,6 @@
 {{define "content"}}
 <h1>Fleet</h1>
-<p class="muted">Devices and their SIMs · quota is segments/day</p>
+<p class="muted">Devices and their SIMs · quota is segments/day · deleting a device unlinks the phone immediately</p>
 
 {{range .Devices}}
 <div class="card device">
@@ -8,17 +8,27 @@
     <div>
       <strong>{{.D.Name}}</strong>
       <span class="mono muted">{{shortID .D.ID}}</span>
-    </div>
-    <div>
       {{if .Online}}<span class="pill ok">online</span>{{else}}<span class="pill bad">offline</span>{{end}}
       <span class="muted">seen {{since .D.LastSeenAt}}</span>
       {{if gt .D.WakeMisses 0}}<span class="pill warn">wake-misses {{.D.WakeMisses}}</span>{{end}}
-      {{if .Online}}<form method="post" action="/admin/devices/{{.D.ID}}/rescan" style="display:inline"><button type="submit">Re-scan SIMs</button></form>{{end}}
     </div>
+    {{if $.CanMutate}}
+    <div class="sim-actions">
+      {{if .Online}}<form method="post" action="/admin/devices/{{.D.ID}}/rescan" style="display:inline"><button type="submit">Re-scan SIMs</button></form>{{end}}
+      <form method="post" action="/admin/devices/{{.D.ID}}/rename" class="rename-form" style="display:inline">
+        <input name="name" value="{{.D.Name}}" aria-label="Device name">
+        <button type="submit">Rename</button>
+      </form>
+      <form method="post" action="/admin/devices/{{.D.ID}}/delete" style="display:inline"
+            onsubmit="return confirm('Unlink {{.D.Name}}? The phone disconnects now and must be re-enrolled to return.')">
+        <button type="submit" class="danger">Unlink / Delete</button>
+      </form>
+    </div>
+    {{end}}
   </div>
   <div class="table-wrap">
   <table class="grid">
-    <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota</th><th>Health</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota (segments/day)</th><th>Health</th><th>Actions</th></tr></thead>
     <tbody>
     {{range .Sims}}
       <tr>
@@ -28,16 +38,26 @@
         <td data-label="Status">{{template "statusPill" (printf "%s" .Status)}}</td>
         <td data-label="Quota">
           <div class="quota"><div class="quota-bar" style="width:{{quotaPct .SentToday .DailyQuota}}%"></div></div>
-          <span class="mono muted">{{.SentToday}}/{{.DailyQuota}}</span>
+          <span class="mono muted">{{.SentToday}} sent</span>
+          {{if $.CanMutate}}
+          <form method="post" action="/admin/sims/{{.ID}}/quota" class="quota-form">
+            <input type="number" name="daily_quota" value="{{.DailyQuota}}" min="0" max="100000" aria-label="Daily quota">
+            <button type="submit">Save</button>
+          </form>
+          {{else}}
+          <span class="mono muted">/ {{.DailyQuota}}</span>
+          {{end}}
         </td>
         <td class="num" data-label="Health">{{.HealthScore}}</td>
         <td data-label="Actions" class="sim-actions">
+          {{if $.CanMutate}}
           {{if eq (printf "%s" .Status) "DISABLED"}}
             <form method="post" action="/admin/sims/{{.ID}}/enable" style="display:inline"><button type="submit">Enable</button></form>
           {{else}}
             <form method="post" action="/admin/sims/{{.ID}}/cooldown" style="display:inline"><button type="submit">Cooldown</button></form>
             <form method="post" action="/admin/sims/{{.ID}}/disable" style="display:inline"><button type="submit">Disable</button></form>
           {{end}}
+          {{else}}<span class="muted">—</span>{{end}}
         </td>
       </tr>
     {{else}}

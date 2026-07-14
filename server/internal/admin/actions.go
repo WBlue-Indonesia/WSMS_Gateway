@@ -2,6 +2,8 @@ package admin
 
 import (
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -58,6 +60,65 @@ func (s *Server) deviceRescan(c *gin.Context) {
 	f, _ := ws.Encode(ws.TypeConfig, models.NewID(), time.Now().UnixMilli(), map[string]any{"action": "report_sims"})
 	_ = s.hub.SendTo(c.Param("id"), f)
 	s.audit(c, "device.rescan", "device", c.Param("id"), "")
+	c.Redirect(http.StatusSeeOther, "/admin/fleet")
+}
+
+// deviceRename updates a device's display name.
+func (s *Server) deviceRename(c *gin.Context) {
+	if !s.canMutate(c) {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	name := strings.TrimSpace(c.PostForm("name"))
+	if name == "" {
+		c.Redirect(http.StatusSeeOther, "/admin/fleet")
+		return
+	}
+	s.db.Model(&models.Device{}).Where("id = ?", c.Param("id")).
+		Updates(map[string]any{"name": name, "updated_at": time.Now()})
+	s.audit(c, "device.rename", "device", c.Param("id"), name)
+	c.Redirect(http.StatusSeeOther, "/admin/fleet")
+}
+
+// deviceDelete unlinks a device from the console (Fleet). See unlinkDevice.
+func (s *Server) deviceDelete(c *gin.Context) {
+	if !s.canMutate(c) {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	s.unlinkDevice(c.Param("id"))
+	s.audit(c, "device.delete", "device", c.Param("id"), "")
+	c.Redirect(http.StatusSeeOther, "/admin/fleet")
+}
+
+// unlinkDevice fully detaches a phone: it force-closes the live WebSocket so the
+// phone drops immediately, then soft-deletes the device, its SIMs, and any enrollment
+// token that paired it. A soft-deleted device row is invisible to deviceWS auth
+// (which does a plain First), so the phone can no longer reconnect — it is unlinked.
+func (s *Server) unlinkDevice(deviceID string) {
+	s.hub.Disconnect(deviceID) // kill the live socket now, not at the next ping timeout
+	s.db.Where("device_id = ?", deviceID).Delete(&models.Sim{})
+	s.db.Where("device_id = ?", deviceID).Delete(&models.EnrollmentToken{})
+	s.db.Delete(&models.Device{}, "id = ?", deviceID)
+}
+
+// simQuota sets a SIM's daily segment quota (segments/day).
+func (s *Server) simQuota(c *gin.Context) {
+	if !s.canMutate(c) {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	q, err := strconv.Atoi(strings.TrimSpace(c.PostForm("daily_quota")))
+	if err != nil || q < 0 {
+		c.Redirect(http.StatusSeeOther, "/admin/fleet")
+		return
+	}
+	if q > 100000 {
+		q = 100000 // sanity ceiling
+	}
+	s.db.Model(&models.Sim{}).Where("id = ?", c.Param("id")).
+		Updates(map[string]any{"daily_quota": q, "updated_at": time.Now()})
+	s.audit(c, "sim.quota", "sim", c.Param("id"), strconv.Itoa(q))
 	c.Redirect(http.StatusSeeOther, "/admin/fleet")
 }
 

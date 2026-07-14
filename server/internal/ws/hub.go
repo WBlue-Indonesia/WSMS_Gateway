@@ -83,6 +83,23 @@ func (h *Hub) SendTo(deviceID string, f *Frame) error {
 	return c.enqueue(b)
 }
 
+// Disconnect force-closes a device's live WebSocket, if any, and drops it from the
+// registry. Used when a device is unlinked/deleted so the phone loses its session
+// immediately rather than at the next ping timeout. It removes the conn from the map
+// itself (so the closed conn's own unregister becomes a no-op) and does NOT flip the
+// device to OFFLINE — the caller is deleting/disabling the row, which supersedes status.
+func (h *Hub) Disconnect(deviceID string) {
+	h.mu.Lock()
+	c, ok := h.conns[deviceID]
+	if ok {
+		delete(h.conns, deviceID)
+	}
+	h.mu.Unlock()
+	if ok {
+		c.close()
+	}
+}
+
 // Online reports whether a device currently holds a live connection.
 func (h *Hub) Online(deviceID string) bool {
 	h.mu.RLock()

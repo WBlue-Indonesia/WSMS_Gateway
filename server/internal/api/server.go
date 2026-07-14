@@ -49,6 +49,8 @@ func (s *Server) Handler() http.Handler {
 
 	// Admin console (server-rendered, mounted in this same binary under /admin).
 	if s.admin != nil {
+		// Public landing page at "/" — unauthenticated, explains the system (sms.wblue.id).
+		r.GET("/", s.admin.PublicHome)
 		s.admin.Mount(r)
 	}
 

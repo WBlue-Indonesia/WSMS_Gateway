@@ -35,11 +35,15 @@ type Server struct {
 
 	mu       sync.RWMutex
 	sessions map[string]session
+
+	flashMu sync.Mutex
+	flashes map[string]flashItem
 }
 
 func New(db *gorm.DB, hub *ws.Hub, cfg config.Config, engine *router.Engine) *Server {
 	buildTemplates()
-	return &Server{db: db, hub: hub, cfg: cfg, engine: engine, sessions: map[string]session{}}
+	return &Server{db: db, hub: hub, cfg: cfg, engine: engine,
+		sessions: map[string]session{}, flashes: map[string]flashItem{}}
 }
 
 // Mount wires the admin routes onto the given gin engine and bootstraps the owner user.
@@ -48,6 +52,8 @@ func (s *Server) Mount(r *gin.Engine) {
 
 	g := r.Group("/admin")
 	g.StaticFS("/static", http.FS(mustSub()))
+	g.GET("/manifest.webmanifest", s.serveManifest) // PWA (public)
+	g.GET("/sw.js", s.serviceWorker)                // PWA service worker (public, scope /admin/)
 	g.GET("/login", s.loginPage)
 	g.POST("/login", s.doLogin)
 	g.POST("/logout", s.doLogout)
@@ -67,11 +73,20 @@ func (s *Server) Mount(r *gin.Engine) {
 	a.POST("/sims/:id/disable", s.simDisable)
 	a.POST("/sims/:id/enable", s.simEnable)
 	a.POST("/sims/:id/cooldown", s.simCooldown)
+	a.POST("/sims/:id/quota", s.simQuota)
 	a.POST("/devices/:id/rescan", s.deviceRescan)
+	a.POST("/devices/:id/rename", s.deviceRename)
+	a.POST("/devices/:id/delete", s.deviceDelete)
 	a.GET("/enrollment", s.enrollmentPage)
 	a.POST("/enrollment", s.issueEnrollment)
+	a.POST("/enrollment/:id/delete", s.deleteEnrollment)
 	a.GET("/clients", s.clientsPage)
+	a.POST("/clients", s.createClient)
+	a.POST("/clients/:id/toggle", s.toggleClient)
+	a.POST("/clients/:id/delete", s.deleteClient)
+	a.POST("/clients/:id/keys", s.createKey)
 	a.POST("/clients/:id/webhook-secret", s.rotateWebhookSecret)
+	a.POST("/keys/:id/revoke", s.revokeKey)
 	a.POST("/keys/:id/enable-signing", s.enableKeySigning)
 	a.GET("/apidocs", s.apiDocsPage)
 	a.GET("/openapi.json", s.openAPISpec)

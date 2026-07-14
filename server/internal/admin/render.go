@@ -37,20 +37,41 @@ var fullPages = []string{"login", "overview", "messages", "compose", "fleet", "e
 var fragments = []string{"message_detail", "messages_rows", "unmask"}
 
 var (
-	pageTmpls map[string]*template.Template
-	fragTmpls map[string]*template.Template
+	pageTmpls  map[string]*template.Template
+	fragTmpls  map[string]*template.Template
+	publicTmpl *template.Template // standalone marketing/info page at "/" (no layout, no auth)
 )
 
 var funcs = template.FuncMap{
 	"maskMSISDN": maskMSISDN,
-	"shortID":    func(s string) string { if len(s) > 8 { return s[:8] }; return s },
-	"fmtTime":    func(t time.Time) string { if t.IsZero() { return "—" }; return t.Local().Format("2006-01-02 15:04:05") },
-	"fmtTimeP":   func(t *time.Time) string { if t == nil || t.IsZero() { return "—" }; return t.Local().Format("2006-01-02 15:04") },
-	"since":      since,
-	"badge":      statusBadge,
-	"pct":        func(n, d int64) string { if d == 0 { return "—" }; return fmt.Sprintf("%.0f%%", float64(n)*100/float64(d)) },
-	"addI":       func(a, b int64) int64 { return a + b },
-	"list":       func(xs ...string) []string { return xs },
+	"shortID": func(s string) string {
+		if len(s) > 8 {
+			return s[:8]
+		}
+		return s
+	},
+	"fmtTime": func(t time.Time) string {
+		if t.IsZero() {
+			return "—"
+		}
+		return t.Local().Format("2006-01-02 15:04:05")
+	},
+	"fmtTimeP": func(t *time.Time) string {
+		if t == nil || t.IsZero() {
+			return "—"
+		}
+		return t.Local().Format("2006-01-02 15:04")
+	},
+	"since": since,
+	"badge": statusBadge,
+	"pct": func(n, d int64) string {
+		if d == 0 {
+			return "—"
+		}
+		return fmt.Sprintf("%.0f%%", float64(n)*100/float64(d))
+	},
+	"addI": func(a, b int64) int64 { return a + b },
+	"list": func(xs ...string) []string { return xs },
 	"quotaPct": func(sent, quota int) int {
 		if quota <= 0 {
 			return 0
@@ -61,8 +82,43 @@ var funcs = template.FuncMap{
 		}
 		return p
 	},
-	"lower":      strings.ToLower,
-	"sparkline":  sparkline,
+	"lower":     strings.ToLower,
+	"sparkline": sparkline,
+	// scopeField maps a scope like "messages:write" to its form field name
+	// "scope_messages_write" (matches createKey's parser).
+	"scopeField": func(s string) string { return "scope_" + strings.ReplaceAll(s, ":", "_") },
+	// ratio returns n/max as a 0..100 int for bar widths (min 2% when n>0, so a
+	// non-zero value is always visible). Args may be int or int64.
+	"ratio": func(n, max any) int {
+		nn, mm := toI64(n), toI64(max)
+		if mm <= 0 {
+			return 0
+		}
+		r := int(nn * 100 / mm)
+		if r > 100 {
+			r = 100
+		}
+		if r < 2 && nn > 0 {
+			r = 2
+		}
+		return r
+	},
+}
+
+// toI64 coerces the numeric types the templates hand to ratio into int64.
+func toI64(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case float64:
+		return int64(n)
+	default:
+		return 0
+	}
 }
 
 func buildTemplates() {
@@ -82,6 +138,7 @@ func buildTemplates() {
 		t = template.Must(t.ParseFS(tmplFS, "templates/partials.html", "templates/"+f+".html"))
 		fragTmpls[f] = t
 	}
+	publicTmpl = template.Must(template.New("public.html").Funcs(funcs).ParseFS(tmplFS, "templates/public.html"))
 }
 
 func renderPage(c *gin.Context, name string, data gin.H) {
@@ -169,6 +226,6 @@ func sparkline(vals []int) template.HTML {
 		fmt.Fprintf(&pts, "%.1f,%.1f ", x, y)
 	}
 	return template.HTML(fmt.Sprintf(
-		`<svg width="%d" height="%d" viewBox="0 0 %d %d" class="spark"><polyline points="%s"/></svg>`,
+		`<svg aria-hidden="true" focusable="false" width="%d" height="%d" viewBox="0 0 %d %d" class="spark"><polyline points="%s"/></svg>`,
 		w, h, w, h, strings.TrimSpace(pts.String())))
 }

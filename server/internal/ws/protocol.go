@@ -19,6 +19,7 @@ const (
 	TypeSendAck        = "send_ack"        // accepted | rejected | duplicate for a send_command
 	TypeDeliveryReport = "delivery_report" // sent | sent_unconfirmed | delivered | failed
 	TypeCancelAck      = "cancel_ack"      // response to a cancel command (F9)
+	TypeSetQuota       = "set_quota"       // device adjusts a SIM's daily quota (segments/day)
 )
 
 // Server -> device frame types.
@@ -28,6 +29,7 @@ const (
 	TypeConfig      = "config"
 	TypePing        = "ping"
 	TypePong        = "pong"
+	TypeSimState    = "sim_state" // authoritative per-SIM state (operator, status, quota, sent)
 )
 
 // ---- Payloads ----
@@ -55,7 +57,7 @@ type SimReportData struct {
 // SendCommandData is what the server tells a device to send.
 type SendCommandData struct {
 	MessageID      string `json:"message_id"`
-	Target         string `json:"target"`          // canonical +62
+	Target         string `json:"target"` // canonical +62
 	Body           string `json:"body"`
 	SubscriptionID int    `json:"subscription_id"` // which local SIM to bind SmsManager to
 	Encoding       string `json:"encoding"`
@@ -88,6 +90,33 @@ const (
 	DRDelivered = "delivered"
 	DRFailed    = "failed"
 )
+
+// SimState is the server's authoritative view of one SIM, pushed to the owning device
+// so the app can show operator/status/quota and let the operator adjust the quota. It is
+// keyed to the device by subscription_id (the only id the phone knows); sim_id is the
+// server UUID, echoed for reference.
+type SimState struct {
+	SimID          string `json:"sim_id"`
+	SubscriptionID int    `json:"subscription_id"`
+	Slot           int    `json:"slot"`
+	Operator       string `json:"operator"`
+	MSISDN         string `json:"msisdn,omitempty"`
+	Status         string `json:"status"`
+	DailyQuota     int    `json:"daily_quota"`
+	SentToday      int    `json:"sent_today"`
+	HealthScore    int    `json:"health_score"`
+}
+
+type SimStateData struct {
+	Sims []SimState `json:"sims"`
+}
+
+// SetQuotaData is a device-initiated change to a SIM's daily quota. The server resolves
+// the SIM by (device_id, subscription_id) and clamps the value.
+type SetQuotaData struct {
+	SubscriptionID int `json:"subscription_id"`
+	DailyQuota     int `json:"daily_quota"`
+}
 
 type CancelData struct {
 	MessageID string `json:"message_id"`

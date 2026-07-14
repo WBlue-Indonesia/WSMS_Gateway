@@ -1,60 +1,122 @@
 {{define "content"}}
-<h1>Overview</h1>
-<p class="muted">Last 24 hours · live fleet state</p>
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p class="muted">Last 24 hours · live fleet state</p>
+  </div>
+  <a class="btn" href="/admin/compose">{{/* quick action */}}+ Send SMS</a>
+</div>
 
 <div class="tiles">
-  <div class="tile">
-    <div class="tile-label">Devices online</div>
+  <div class="tile accent">
+    <div class="tile-top">
+      <span class="tile-label">Devices online</span>
+      <span class="tile-ic"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span>
+    </div>
     <div class="tile-value">{{.OnlineDevices}} <span class="of">/ {{.TotalDevices}}</span></div>
+    <div class="meter"><i style="width:{{ratio .OnlineDevices .TotalDevices}}%"></i></div>
+    {{if gt .Attention 0}}<div class="tile-sub"><span class="pill warn">{{.Attention}} need attention</span></div>{{end}}
   </div>
+
   <div class="tile">
-    <div class="tile-label">SIMs ready</div>
+    <div class="tile-top">
+      <span class="tile-label">SIMs ready</span>
+      <span class="tile-ic"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M7 7V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg></span>
+    </div>
     <div class="tile-value">{{.ReadySims}} <span class="of">/ {{.TotalSims}}</span></div>
+    <div class="meter ok"><i style="width:{{ratio .ReadySims .TotalSims}}%"></i></div>
   </div>
-  <div class="tile">
-    <div class="tile-label">Queue depth</div>
+
+  <div class="tile {{if gt .QueueDepth 0}}warn{{end}}">
+    <div class="tile-top">
+      <span class="tile-label">Queue depth</span>
+      <span class="tile-ic"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="9"/></svg></span>
+    </div>
     <div class="tile-value">{{.QueueDepth}}</div>
+    <div class="tile-sub">in flight, not yet terminal</div>
   </div>
-  <div class="tile">
-    <div class="tile-label">Delivery success</div>
+
+  <div class="tile ok">
+    <div class="tile-top">
+      <span class="tile-label">Delivery success</span>
+      <span class="tile-ic"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+    </div>
     <div class="tile-value">{{pct .SuccessNum .SuccessDen}}</div>
-    <div class="tile-sub">{{.Delivered}} delivered · {{.Failed}} failed</div>
+    <div class="tile-sub"><span class="pill ok plain">{{.Delivered}} delivered</span> <span class="pill bad plain">{{.Failed}} failed</span></div>
   </div>
+
   <div class="tile">
-    <div class="tile-label">On-net vs fallback</div>
-    <div class="tile-value">{{.OnNet}} <span class="of">/ {{.Fallback}} fb</span></div>
-    <div class="tile-sub">{{pct .OnNet (addI .OnNet .Fallback)}} on-net</div>
+    <div class="tile-top">
+      <span class="tile-label">On-net share</span>
+      <span class="tile-ic"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h4l3 8 4-16 3 8h4"/></svg></span>
+    </div>
+    <div class="tile-value">{{pct .OnNet (addI .OnNet .Fallback)}}</div>
+    <div class="tile-sub">{{.OnNet}} on-net · {{.Fallback}} fallback</div>
   </div>
+
   <div class="tile">
-    <div class="tile-label">Segments today</div>
+    <div class="tile-top">
+      <span class="tile-label">Segments today</span>
+      <span class="tile-ic"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+    </div>
     <div class="tile-value">{{.SegToday}}</div>
+    <div class="tile-sub">fleet quota {{pct .QuotaSent .QuotaTotal}} used</div>
+    <div class="meter {{if ge (ratio .QuotaSent .QuotaTotal) 85}}bad{{else if ge (ratio .QuotaSent .QuotaTotal) 60}}warn{{end}}"><i style="width:{{ratio .QuotaSent .QuotaTotal}}%"></i></div>
   </div>
 </div>
 
 <div class="cols">
   <div class="card">
-    <h2>Traffic by target operator</h2>
-    <table class="mini">
-      <tbody>
-      {{range .Operators}}
-        <tr><td>{{.K}}</td><td class="num">{{.N}}</td></tr>
-      {{else}}
-        <tr><td class="muted" colspan="2">no traffic in window</td></tr>
-      {{end}}
-      </tbody>
-    </table>
+    <div class="card-head"><h2>Message volume</h2><span class="muted small">last 7 days</span></div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div class="tile-value" style="margin:0">{{.Total24}} <span class="of">last 24h</span></div>
+      <div style="flex:1;min-width:140px">{{sparkline .Series}}</div>
+    </div>
   </div>
   <div class="card">
-    <h2>On-net capacity (ready SIMs)</h2>
-    <table class="mini">
-      <tbody>
-      {{range .OpReady}}
-        <tr><td>{{.K}}</td><td class="num">{{.N}}</td></tr>
-      {{else}}
-        <tr><td class="muted" colspan="2">no SIM online</td></tr>
-      {{end}}
-      </tbody>
-    </table>
+    <div class="card-head"><h2>Status breakdown</h2><span class="muted small">24h</span></div>
+    <div class="barlist">
+    {{range .StatusBars}}
+      <div class="row">
+        <span class="k">{{template "statusPill" .K}}</span>
+        <span class="track"><i class="" style="width:{{ratio .N $.Total24}}%"></i></span>
+        <span class="v">{{.N}}</span>
+      </div>
+    {{else}}
+      <p class="muted">no messages in window</p>
+    {{end}}
+    </div>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <div class="card-head"><h2>Traffic by target operator</h2><span class="muted small">24h</span></div>
+    <div class="barlist">
+    {{range .Operators}}
+      <div class="row">
+        <span class="k">{{.K}}</span>
+        <span class="track"><i style="width:{{ratio .N $.OpMax}}%"></i></span>
+        <span class="v">{{.N}}</span>
+      </div>
+    {{else}}
+      <p class="muted">no traffic in window</p>
+    {{end}}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>On-net capacity</h2><span class="muted small">ready SIMs, online devices</span></div>
+    <div class="barlist">
+    {{range .OpReady}}
+      <div class="row">
+        <span class="k">{{.K}}</span>
+        <span class="track"><i style="width:{{ratio .N $.OpReadyMax}}%"></i></span>
+        <span class="v">{{.N}}</span>
+      </div>
+    {{else}}
+      <p class="muted">no SIM online</p>
+    {{end}}
+    </div>
   </div>
 </div>
 {{end}}

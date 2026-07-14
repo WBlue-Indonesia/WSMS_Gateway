@@ -32,6 +32,13 @@ func (s *Server) clientAuth(scope string) gin.HandlerFunc {
 			abort(c, http.StatusUnauthorized, "invalid key")
 			return
 		}
+		// The key may be valid, but its client can be disabled (toggleClient) or deleted.
+		// First() excludes soft-deleted rows, so this also blocks deleted clients.
+		var cl models.Client
+		if s.db.Where("id = ? AND active = true", key.ClientID).First(&cl).Error != nil {
+			abort(c, http.StatusUnauthorized, "client inactive")
+			return
+		}
 		if !hasScope(key.Scopes, scope) {
 			abort(c, http.StatusForbidden, "missing scope: "+scope)
 			return

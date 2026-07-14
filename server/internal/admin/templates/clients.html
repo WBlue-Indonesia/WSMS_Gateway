@@ -1,55 +1,100 @@
 {{define "content"}}
 <h1>Clients &amp; API keys</h1>
-<p class="muted">API callers and their bearer keys. Secrets are never stored in plaintext.</p>
+<p class="muted">API callers and their bearer keys. Secrets are stored hashed/encrypted and shown only once, at creation.</p>
+
+{{if .Error}}<div class="err">{{.Error}}</div>{{end}}
 
 {{if .Reveal}}
-<div class="callout">
-  <strong>New {{.RevealKind}} secret — shown once:</strong>
+<div class="callout reveal">
+  <strong>
+    {{if eq .RevealKind "apikey"}}New API key — copy it now, it is shown once{{end}}
+    {{if eq .RevealKind "webhook"}}New webhook secret — shown once{{end}}
+    {{if eq .RevealKind "signing"}}New signing secret — shown once{{end}}
+    {{if .RevealLabel}} <span class="muted">({{.RevealLabel}})</span>{{end}}
+  </strong>
   <code class="token">{{.Reveal}}</code>
-  <p class="muted">
-    {{if eq .RevealKind "webhook"}}Verify webhooks with <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.
-    {{else}}Sign requests with headers <code>X-WSMS-Timestamp</code> and <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.{{end}}
+  <p class="muted small">
+    {{if eq .RevealKind "apikey"}}Send it as <code>Authorization: Bearer &lt;token&gt;</code>. It is not recoverable — only its hash is stored.
+    {{else if eq .RevealKind "webhook"}}Verify webhooks with <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.
+    {{else}}Sign requests with <code>X-WSMS-Timestamp</code> and <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.{{end}}
   </p>
 </div>
+{{end}}
+
+{{if .CanMutate}}
+<form method="post" action="/admin/clients" class="inline-form">
+  <input name="name" placeholder="New client name (e.g. billing-app)" aria-label="New client name" required>
+  <button type="submit">+ Add client</button>
+</form>
 {{end}}
 
 {{range .Clients}}
 <div class="card">
   <div class="device-head">
-    <div><strong>{{.Client.Name}}</strong> <span class="mono muted">{{shortID .Client.ID}}</span></div>
     <div>
+      <strong>{{.Client.Name}}</strong>
+      <span class="mono muted">{{shortID .Client.ID}}</span>
       {{if .Client.Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">disabled</span>{{end}}
       {{if .WebhookSecret}}<span class="pill ok">webhook signed</span>{{else}}<span class="pill muted">webhook unsigned</span>{{end}}
+    </div>
+    {{if $.CanMutate}}
+    <div class="sim-actions">
       <form method="post" action="/admin/clients/{{.Client.ID}}/webhook-secret" style="display:inline">
         <button type="submit">{{if .WebhookSecret}}Rotate{{else}}Set{{end}} webhook secret</button>
       </form>
+      <form method="post" action="/admin/clients/{{.Client.ID}}/toggle" style="display:inline">
+        <button type="submit">{{if .Client.Active}}Disable{{else}}Enable{{end}}</button>
+      </form>
+      <form method="post" action="/admin/clients/{{.Client.ID}}/delete" style="display:inline"
+            onsubmit="return confirm('Delete client {{.Client.Name}} and revoke all its keys?')">
+        <button type="submit" class="danger">Delete</button>
+      </form>
     </div>
+    {{end}}
   </div>
+
   <div class="table-wrap">
   <table class="grid">
-    <thead><tr><th>Key prefix</th><th>Scopes</th><th>Signing</th><th>Status</th><th>Last used</th><th></th></tr></thead>
+    <thead><tr><th>Key</th><th>Scopes</th><th>Signing</th><th>Status</th><th>Last used</th><th></th></tr></thead>
     <tbody>
     {{range .Keys}}
       <tr>
-        <td class="mono" data-label="Key">wsms_{{.Prefix}}.••••</td>
+        <td class="mono" data-label="Key">wsms_{{.Prefix}}<span class="muted">.•••••</span></td>
         <td class="mono small" data-label="Scopes">{{.Scopes}}</td>
         <td data-label="Signing">{{if .SigningSecretEnc}}<span class="pill ok">on</span>{{else}}<span class="pill muted">off</span>{{end}}</td>
         <td data-label="Status">{{if .Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">revoked</span>{{end}}</td>
         <td class="mono" data-label="Last used">{{fmtTimeP .LastUsedAt}}</td>
-        <td>
+        <td data-label="" class="sim-actions">
+          {{if $.CanMutate}}
           <form method="post" action="/admin/keys/{{.ID}}/enable-signing" style="display:inline">
             <button type="submit">{{if .SigningSecretEnc}}Rotate{{else}}Enable{{end}} signing</button>
           </form>
+          <form method="post" action="/admin/keys/{{.ID}}/revoke" style="display:inline"
+                onsubmit="return confirm('Revoke key wsms_{{.Prefix}}? This cannot be undone.')">
+            <button type="submit" class="danger">Revoke</button>
+          </form>
+          {{end}}
         </td>
       </tr>
     {{else}}
-      <tr><td colspan="6" class="muted">no keys</td></tr>
+      <tr><td colspan="6" class="muted">no keys yet</td></tr>
     {{end}}
     </tbody>
   </table>
   </div>
+
+  {{if $.CanMutate}}
+  <form method="post" action="/admin/clients/{{.Client.ID}}/keys" class="key-form">
+    <span class="muted small">New key scopes:</span>
+    {{range $.Scopes}}
+      <label class="scope-check"><input type="checkbox" name="{{scopeField .}}" value="1"
+        {{if or (eq . "messages:write") (eq . "messages:read")}}checked{{end}}> {{.}}</label>
+    {{end}}
+    <button type="submit">+ Create key</button>
+  </form>
+  {{end}}
 </div>
 {{else}}
-<div class="card"><p class="muted">No clients yet.</p></div>
+<div class="card"><p class="muted">No clients yet.{{if .CanMutate}} Add one above.{{end}}</p></div>
 {{end}}
 {{end}}

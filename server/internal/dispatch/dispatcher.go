@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -193,6 +194,19 @@ func (d *Dispatcher) HandleFrame(deviceID string, f *ws.Frame) {
 			if err := fleet.UpsertSims(d.db, deviceID, sr.Sims); err != nil {
 				slog.Error("sim_report upsert", "device", deviceID, "err", err)
 			}
+			d.pushSimState(deviceID) // give the app its authoritative per-SIM quota/state
+		}
+	case ws.TypeSetQuota:
+		var sq ws.SetQuotaData
+		if f.Decode(&sq) == nil {
+			if simID, clamped, ok := fleet.SetSimQuota(d.db, deviceID, sq.SubscriptionID, sq.DailyQuota); ok {
+				d.db.Create(&models.AdminAudit{
+					ID: models.NewID(), Actor: "device:" + deviceID, ActorRole: "device",
+					Action: "sim.quota", TargetType: "sim", TargetID: simID,
+					Reason: strconv.Itoa(clamped), CreatedAt: time.Now(),
+				})
+			}
+			d.pushSimState(deviceID) // echo the authoritative (clamped) state back
 		}
 	case ws.TypeHello:
 		var h ws.HelloData
@@ -388,6 +402,22 @@ func (d *Dispatcher) recentlyWoke(deviceID string) bool {
 	}
 	d.lastWake[deviceID] = time.Now()
 	return false
+}
+
+// pushSimState sends the device its authoritative per-SIM state (operator, status,
+// quota, sent-today) so the app can show and adjust quota. Best-effort — a no-op if the
+// device is offline.
+func (d *Dispatcher) pushSimState(deviceID string) {
+	states, err := fleet.DeviceSimStates(d.db, deviceID)
+	if err != nil {
+		slog.Error("sim_state build", "device", deviceID, "err", err)
+		return
+	}
+	f, err := ws.Encode(ws.TypeSimState, models.NewID(), nowMs(), ws.SimStateData{Sims: states})
+	if err != nil {
+		return
+	}
+	_ = d.hub.SendTo(deviceID, f)
 }
 
 func nowMs() int64 { return time.Now().UnixMilli() }

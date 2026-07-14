@@ -18,13 +18,13 @@
 {{end}}
 
 <form method="post" action="/admin/enrollment" class="inline-form">
-  <input name="label" placeholder="Label (e.g. HP-D warehouse)">
+  <input name="label" placeholder="Label (e.g. HP-D warehouse)" aria-label="Enrollment label">
   <button type="submit">Issue token</button>
 </form>
 
 <div class="table-wrap">
 <table class="grid">
-  <thead><tr><th>Created</th><th>Label</th><th>Status</th><th>Expires</th><th>Device</th></tr></thead>
+  <thead><tr><th>Created</th><th>Label</th><th>Status</th><th>Expires</th><th>Device</th><th>Actions</th></tr></thead>
   <tbody>
   {{range .Tokens}}
     <tr>
@@ -32,10 +32,18 @@
       <td data-label="Label">{{if .Label}}{{.Label}}{{else}}—{{end}}</td>
       <td data-label="Status">{{if .Used}}<span class="pill muted">used</span>{{else}}<span class="pill ok">available</span>{{end}}</td>
       <td class="mono" data-label="Expires">{{fmtTime .ExpiresAt}}</td>
-      <td class="mono muted" data-label="Device">{{if .DeviceID}}paired{{else}}—{{end}}</td>
+      <td class="mono muted" data-label="Device">{{if .DeviceID}}<span class="pill ok">paired</span>{{else}}—{{end}}</td>
+      <td data-label="Actions" class="sim-actions">
+        {{if $.CanMutate}}
+        <form method="post" action="/admin/enrollment/{{.ID}}/delete" style="display:inline"
+          onsubmit="return confirm({{if .DeviceID}}'Unlink the paired phone and delete this enrollment? The phone disconnects now and must be re-enrolled.'{{else}}'Delete this enrollment token?'{{end}})">
+          <button type="submit" class="danger">{{if .DeviceID}}Unlink device{{else}}Delete{{end}}</button>
+        </form>
+        {{else}}<span class="muted">—</span>{{end}}
+      </td>
     </tr>
   {{else}}
-    <tr><td colspan="5" class="muted">no tokens issued</td></tr>
+    <tr><td colspan="6" class="muted">no tokens issued</td></tr>
   {{end}}
   </tbody>
 </table>

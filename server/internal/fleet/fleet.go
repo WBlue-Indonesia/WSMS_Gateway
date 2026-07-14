@@ -76,3 +76,50 @@ func UpsertSims(db *gorm.DB, deviceID string, report []ws.SimInfo) error {
 	}
 	return nil
 }
+
+// MaxDailyQuota is the sanity ceiling for a SIM's daily quota (segments/day). Shared by
+// the admin console and the device-initiated set_quota path.
+const MaxDailyQuota = 100000
+
+// DeviceSimStates returns the current server-side state of every (non-deleted) SIM for a
+// device, for pushing back to the phone as a ws.SimState frame.
+func DeviceSimStates(db *gorm.DB, deviceID string) ([]ws.SimState, error) {
+	var sims []models.Sim
+	if err := db.Where("device_id = ?", deviceID).Order("slot").Find(&sims).Error; err != nil {
+		return nil, err
+	}
+	out := make([]ws.SimState, 0, len(sims))
+	for _, s := range sims {
+		out = append(out, ws.SimState{
+			SimID:          s.ID,
+			SubscriptionID: s.SubscriptionID,
+			Slot:           s.Slot,
+			Operator:       string(s.Operator),
+			MSISDN:         s.MSISDN,
+			Status:         string(s.Status),
+			DailyQuota:     s.DailyQuota,
+			SentToday:      s.SentToday,
+			HealthScore:    s.HealthScore,
+		})
+	}
+	return out, nil
+}
+
+// SetSimQuota applies a device-initiated daily-quota change, resolving the SIM by
+// (device_id, subscription_id) and clamping to [0, MaxDailyQuota]. Returns the SIM's
+// server id and the clamped value so the caller can audit it. ok=false if no such SIM.
+func SetSimQuota(db *gorm.DB, deviceID string, subID, quota int) (simID string, clamped int, ok bool) {
+	if quota < 0 {
+		quota = 0
+	}
+	if quota > MaxDailyQuota {
+		quota = MaxDailyQuota
+	}
+	var sim models.Sim
+	if db.Where("device_id = ? AND subscription_id = ?", deviceID, subID).First(&sim).Error != nil {
+		return "", 0, false
+	}
+	db.Model(&models.Sim{}).Where("id = ?", sim.ID).
+		Updates(map[string]any{"daily_quota": quota, "updated_at": time.Now()})
+	return sim.ID, quota, true
+}

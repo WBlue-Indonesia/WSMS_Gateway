@@ -18,11 +18,20 @@ const (
 )
 
 // Conn wraps one device WebSocket with independent read and write pumps.
+//
+// Shutdown is signalled by closing `done` (once), NOT by closing `send`. `send` is
+// written by arbitrary goroutines (the dispatcher via Hub.SendTo, and register's
+// supersede path), so closing it from close() would race those writers and panic with
+// "send on closed channel" — a send case in a select is *ready* on a closed channel and
+// panics rather than falling through to default. Leaving `send` for the GC and gating
+// on `done` makes close() safe to call from any goroutine (Hub.Disconnect, supersede,
+// Shutdown, the read pump's defer).
 type Conn struct {
 	deviceID string
 	ws       *websocket.Conn
 	hub      *Hub
 	send     chan []byte
+	done     chan struct{}
 	closeOne sync.Once
 }
 
@@ -34,6 +43,7 @@ func Serve(hub *Hub, wsConn *websocket.Conn, deviceID string) {
 		ws:       wsConn,
 		hub:      hub,
 		send:     make(chan []byte, sendBuffer),
+		done:     make(chan struct{}),
 	}
 	hub.register(c)
 	go c.writePump()
@@ -42,6 +52,8 @@ func Serve(hub *Hub, wsConn *websocket.Conn, deviceID string) {
 
 func (c *Conn) enqueue(b []byte) error {
 	select {
+	case <-c.done:
+		return ErrDeviceOffline // connection already closing
 	case c.send <- b:
 		return nil
 	default:
@@ -53,7 +65,7 @@ func (c *Conn) enqueue(b []byte) error {
 
 func (c *Conn) close() {
 	c.closeOne.Do(func() {
-		close(c.send)
+		close(c.done) // never close(c.send): foreign goroutines write it
 		_ = c.ws.Close()
 	})
 }

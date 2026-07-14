@@ -1,7 +1,7 @@
 {{define "content"}}
 <div class="login-card">
-  <div class="brand">WSMS<span>Gateway</span></div>
-  <p class="sub">Admin console</p>
+  <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt=""><span>W</span><b>SMS</b>&nbsp;Gateway</div>
+  <p class="sub">Operator console · WBlue</p>
   {{if .Error}}<div class="err">{{.Error}}</div>{{end}}
   <form method="post" action="/admin/login">
     <label>Username<input name="username" autofocus autocomplete="username"></label>

@@ -91,7 +91,7 @@
     var n=c==='dark'?'light':'dark';d.setAttribute('data-theme',n);
     try{localStorage.setItem('wsms-theme',n);}catch(e){}}
   if('serviceWorker' in navigator){window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/admin/sw.js',{scope:'/admin/'}).catch(function(){});});}
+    navigator.serviceWorker.register('/admin/sw.js',{scope:'/admin'}).catch(function(){});});}
 </script>
 {{else}}
   <main class="auth">{{template "content" .}}</main>

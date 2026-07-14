@@ -37,7 +37,7 @@ func (s *Server) serviceWorker(c *gin.Context) {
 		c.String(http.StatusInternalServerError, "unavailable")
 		return
 	}
-	c.Header("Service-Worker-Allowed", "/admin/")
+	c.Header("Service-Worker-Allowed", "/admin")
 	c.Header("Cache-Control", "no-cache")
 	c.Data(http.StatusOK, "application/javascript; charset=utf-8", b)
 }

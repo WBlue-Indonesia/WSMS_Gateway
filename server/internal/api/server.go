@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,19 +17,28 @@ import (
 	"gorm.io/gorm"
 )
 
+// DeliveryReporter is the dispatcher's device-result surface, so the REST device
+// endpoints (push-driven ack/delivery) reuse the exact WS lifecycle logic.
+type DeliveryReporter interface {
+	HandleDeviceAck(ctx context.Context, a ws.SendAckData)
+	HandleDeviceDelivery(ctx context.Context, dr ws.DeliveryReportData)
+}
+
 type Server struct {
 	db     *gorm.DB
 	hub    *ws.Hub
 	engine *router.Engine
 	cfg    config.Config
 	admin  *admin.Server
+	disp   DeliveryReporter
 	rl     *rateLimiter
 }
 
-func New(db *gorm.DB, hub *ws.Hub, engine *router.Engine, cfg config.Config) *Server {
+func New(db *gorm.DB, hub *ws.Hub, engine *router.Engine, cfg config.Config, disp DeliveryReporter) *Server {
 	return &Server{
 		db: db, hub: hub, engine: engine, cfg: cfg,
 		admin: admin.New(db, hub, cfg, engine),
+		disp:  disp,
 		rl:    newRateLimiter(cfg.RatePerSec, cfg.RateBurst),
 	}
 }
@@ -65,8 +75,19 @@ func (s *Server) Handler() http.Handler {
 		v1.GET("/sims", s.clientAuth("sims:read"), s.listSims)
 
 		// Device-facing.
-		v1.POST("/device/enroll", s.enrollDevice)
-		v1.GET("/device/ws", s.deviceWS)
+		v1.POST("/device/enroll", s.enrollDevice) // no device token yet
+		v1.GET("/device/ws", s.deviceWS)          // WS (legacy transport; own auth)
+
+		// Push-driven device endpoints (device bearer auth). The device is woken by an
+		// FCM data message carrying the send command, sends the SMS, and confirms here.
+		dev := v1.Group("/device")
+		dev.Use(s.deviceAuth)
+		dev.POST("/token", s.registerToken)
+		dev.POST("/report-sims", s.reportSimsREST)
+		dev.GET("/sims", s.deviceSimsREST)
+		dev.POST("/ack", s.deviceAckREST)
+		dev.POST("/delivery", s.deviceDeliveryREST)
+		dev.POST("/set-quota", s.deviceSetQuotaREST)
 	}
 	return r
 }

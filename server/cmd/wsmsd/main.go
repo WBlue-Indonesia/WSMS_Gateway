@@ -74,7 +74,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           api.New(db, hub, engine, cfg).Handler(),
+		Handler:           api.New(db, hub, engine, cfg, disp).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

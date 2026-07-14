@@ -63,6 +63,17 @@ func New(cfg config.Config) (*Waker, error) {
 
 // Wake sends a high-priority data message telling the device to reconnect its socket.
 func (w *Waker) Wake(ctx context.Context, deviceToken string) error {
+	return w.SendData(ctx, deviceToken, map[string]string{
+		"type": "wake",
+		"ts":   fmt.Sprintf("%d", time.Now().Unix()),
+	})
+}
+
+// SendData delivers a high-priority FCM data message. FCM data values must be strings.
+// This is the transport for the push-driven send model: the payload carries the full
+// send command (message_id/target/body/subscription_id/...) so a frozen phone is woken
+// by Play Services, sends the SMS, and confirms over REST — no persistent socket needed.
+func (w *Waker) SendData(ctx context.Context, deviceToken string, data map[string]string) error {
 	tok, err := w.ts.Token()
 	if err != nil {
 		return err
@@ -73,10 +84,7 @@ func (w *Waker) Wake(ctx context.Context, deviceToken string) error {
 			"android": map[string]any{
 				"priority": "high",
 			},
-			"data": map[string]any{
-				"type": "wake",
-				"ts":   fmt.Sprintf("%d", time.Now().Unix()),
-			},
+			"data": data,
 		},
 	})
 	url := fmt.Sprintf("https://fcm.googleapis.com/v1/projects/%s/messages:send", w.projectID)

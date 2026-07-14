@@ -101,7 +101,9 @@ WHERE id = (
     SELECT s.id FROM sims s
     JOIN devices d ON d.id = s.device_id
     WHERE s.status = 'READY'
-      AND d.status = 'ONLINE'
+      AND d.status <> 'DISABLED'
+      -- reachable = a live WS OR an FCM push token (push-driven delivery)
+      AND (d.status = 'ONLINE' OR d.push_token <> '')
       AND s.deleted_at IS NULL AND d.deleted_at IS NULL
       AND (s.cooldown_until IS NULL OR s.cooldown_until < now())
       AND (s.last_used_at IS NULL OR s.last_used_at < now() - (s.min_gap_ms * interval '1 millisecond'))

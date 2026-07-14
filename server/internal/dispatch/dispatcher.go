@@ -30,9 +30,12 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// Waker revives an offline device via a push wake (implemented by internal/fcm).
+// Waker revives an offline device via a push wake (implemented by internal/fcm) and
+// carries the send command itself in a high-priority FCM data message (push-driven
+// delivery — no persistent socket needed).
 type Waker interface {
 	Wake(ctx context.Context, deviceToken string) error
+	SendData(ctx context.Context, deviceToken string, data map[string]string) error
 }
 
 type Dispatcher struct {
@@ -115,21 +118,21 @@ func (d *Dispatcher) dispatchOne(ctx context.Context) bool {
 		slog.Error("ledger insert", "msg", msg.ID, "err", err)
 	}
 
-	cmd, _ := ws.Encode(ws.TypeSendCommand, models.NewID(), nowMs(), ws.SendCommandData{
+	sc := ws.SendCommandData{
 		MessageID:      msg.ID,
 		Target:         msg.TargetMSISDN,
 		Body:           msg.Body,
 		SubscriptionID: choice.SubscriptionID,
 		Encoding:       string(msg.Encoding),
 		ExpiresAtMs:    msg.ExpiresAt.UnixMilli(),
-	})
+	}
 
-	if err := d.hub.SendTo(choice.DeviceID, cmd); err != nil {
+	if err := d.deliverCommand(ctx, choice.DeviceID, sc); err != nil {
 		// Command never left the server → nothing was sent. Safe to release + re-queue
 		// (this is the ONLY re-route path, and it is pre-enqueue).
 		_ = d.engine.Release(ctx, choice.SimID, msg.Segments)
 		d.db.WithContext(ctx).Delete(&models.MessageSend{}, "message_id = ?", msg.ID)
-		d.setStatus(ctx, msg.ID, models.MsgQueued, "device offline at dispatch")
+		d.setStatus(ctx, msg.ID, models.MsgQueued, "device unreachable at dispatch")
 		return true
 	}
 
@@ -418,6 +421,40 @@ func (d *Dispatcher) pushSimState(deviceID string) {
 		return
 	}
 	_ = d.hub.SendTo(deviceID, f)
+}
+
+// deliverCommand sends the send_command to the chosen device. It prefers FCM — a
+// high-priority data message wakes even a frozen app; the device sends the SMS and
+// confirms over REST, so no persistent socket is needed. If the device has no push
+// token but holds a live WS, it falls back to the socket.
+func (d *Dispatcher) deliverCommand(ctx context.Context, deviceID string, sc ws.SendCommandData) error {
+	if d.waker != nil {
+		var dev models.Device
+		if err := d.db.WithContext(ctx).Select("push_token").First(&dev, "id = ?", deviceID).Error; err == nil && dev.PushToken != "" {
+			return d.waker.SendData(ctx, dev.PushToken, map[string]string{
+				"type":            "send",
+				"message_id":      sc.MessageID,
+				"target":          sc.Target,
+				"body":            sc.Body,
+				"subscription_id": strconv.Itoa(sc.SubscriptionID),
+				"encoding":        sc.Encoding,
+				"expires_at_ms":   strconv.FormatInt(sc.ExpiresAtMs, 10),
+			})
+		}
+	}
+	cmd, err := ws.Encode(ws.TypeSendCommand, models.NewID(), nowMs(), sc)
+	if err != nil {
+		return err
+	}
+	return d.hub.SendTo(deviceID, cmd)
+}
+
+// HandleDeviceAck / HandleDeviceDelivery let the REST device endpoints reuse the exact
+// same lifecycle logic as the WS path (F1/F5/F9 invariants preserved).
+func (d *Dispatcher) HandleDeviceAck(ctx context.Context, a ws.SendAckData) { d.onSendAck(ctx, a) }
+
+func (d *Dispatcher) HandleDeviceDelivery(ctx context.Context, dr ws.DeliveryReportData) {
+	d.onDeliveryReport(ctx, dr)
 }
 
 func nowMs() int64 { return time.Now().UnixMilli() }

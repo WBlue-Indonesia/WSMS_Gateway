@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: wsms
+      POSTGRES_PASSWORD: wsms
+      POSTGRES_DB: wsms
+    ports:
+      - "5432:5432"
+    volumes:
+      - wsms_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wsms"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WSMS_HTTP_ADDR: ":8080"
+      WSMS_DATABASE_URL: "postgres://wsms:wsms@db:5432/wsms?sslmode=disable"
+      WSMS_DISPATCH_WORKERS: "4"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  wsms_pg:

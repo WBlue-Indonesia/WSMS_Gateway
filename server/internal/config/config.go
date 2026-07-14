@@ -31,6 +31,9 @@ type Config struct {
 	RatePerSec float64
 	RateBurst  int
 
+	// RetentionDays purges messages/events/webhooks older than this (PII, docs/06 §2.6).
+	RetentionDays int
+
 	// FCM wake (optional): path to a Firebase service-account JSON + project id.
 	FCMCredentialsFile string
 	FCMProjectID       string
@@ -55,6 +58,7 @@ func Load() Config {
 		WebhookMaxAttempts: envInt("WSMS_WEBHOOK_MAX_ATTEMPTS", 6),
 		RatePerSec:         envFloat("WSMS_RATE_PER_SEC", 5),
 		RateBurst:          envInt("WSMS_RATE_BURST", 10),
+		RetentionDays:      envInt("WSMS_MSG_RETENTION_DAYS", 30),
 		FCMCredentialsFile: os.Getenv("WSMS_FCM_CREDENTIALS"),
 		FCMProjectID:       os.Getenv("WSMS_FCM_PROJECT_ID"),
 		PublicURL:          os.Getenv("WSMS_PUBLIC_URL"),

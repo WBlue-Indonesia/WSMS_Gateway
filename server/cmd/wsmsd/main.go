@@ -16,6 +16,7 @@ import (
 	"github.com/nizwar/wsms-gateway/server/internal/config"
 	"github.com/nizwar/wsms-gateway/server/internal/dispatch"
 	"github.com/nizwar/wsms-gateway/server/internal/fcm"
+	"github.com/nizwar/wsms-gateway/server/internal/maintenance"
 	"github.com/nizwar/wsms-gateway/server/internal/router"
 	"github.com/nizwar/wsms-gateway/server/internal/store"
 	"github.com/nizwar/wsms-gateway/server/internal/webhook"
@@ -69,6 +70,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	go disp.Run(ctx)
 	go webhook.New(db, cfg).Run(ctx)
+	go maintenance.New(db, cfg).Run(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

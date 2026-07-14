@@ -1,0 +1,6 @@
+# Keep credentials & local infra out of the Docker build context
+secrets/
+docker-compose*.yml
+.dockerignore
+*.md
+.git

@@ -1,0 +1,41 @@
+# WSMS-Gateway — production deploy (API only)
+# Postgres is internal-only (not published to host, which already runs :5432).
+# Server bound to localhost:8095; aaPanel nginx + Cloudflare front sms-gateway.wblue.id.
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: wsms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wsms
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in server/.env}"
+      POSTGRES_DB: wsms
+    volumes:
+      - wsms_pg:/var/lib/postgresql   # PG18+ stores data in a version subdir under here
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wsms"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build: .
+    container_name: wsms-server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WSMS_HTTP_ADDR: ":8080"
+      WSMS_DATABASE_URL: "postgres://wsms:${POSTGRES_PASSWORD}@db:5432/wsms?sslmode=disable"
+      WSMS_DISPATCH_WORKERS: "4"
+      # FCM device wake (revives offline phones that have queued work)
+      WSMS_FCM_CREDENTIALS: "/etc/wsms/firebase-sa.json"
+      WSMS_FCM_PROJECT_ID: "wblue-sms-gateway"
+    volumes:
+      - ./secrets/firebase-sa.json:/etc/wsms/firebase-sa.json:ro
+    ports:
+      - "127.0.0.1:8095:8080"   # localhost only; nginx/CF fronts it
+
+volumes:
+  wsms_pg:

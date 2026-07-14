@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'src/enroll_screen.dart';
+import 'src/foreground.dart';
 import 'src/home_screen.dart';
+import 'src/push.dart';
 import 'src/storage.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  ForegroundService.init();
+  await Push.init(); // best-effort; no-op without a Firebase project
   runApp(const WsmsApp());
 }
 

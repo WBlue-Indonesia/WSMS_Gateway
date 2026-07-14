@@ -54,9 +54,15 @@ Design complete (docs 00–09) + working MVP:
   message log + detail drawer + lifecycle, PII mask/role-gated unmask (audited),
   fleet + per-SIM quota, clients/keys, enrollment, integrated API docs + OpenAPI.
   Verified end-to-end.
-- **App** — Kotlin telephony channel + Dart WS gateway + enrollment; compiles clean.
+- **App** — Kotlin telephony channel + Dart WS gateway + enrollment + foreground
+  service (survival) + FCM wake; compiles clean (`flutter build apk` ✓).
+- **Delivery** — outbound webhooks (HMAC-signed, retried) and optional inbound
+  signed API (F3) — both verified live.
 
-Not yet built: FCM wake, foreground-service isolate, webhooks, signed API (F3).
+Feature-complete against docs 00–09. Remaining before production: drop in a real
+Firebase `google-services.json` + service account (FCM only), a signed release
+build, and (optional) moving the sender into a task isolate for full
+Activity-death survival — survival is otherwise best-effort by design (F8).
 
 ## Stack
 

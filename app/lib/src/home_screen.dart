@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'foreground.dart';
 import 'gateway.dart';
 import 'storage.dart';
 import 'telephony.dart';
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _gateway = Gateway(widget.storage, Telephony());
     _gateway.start();
+    ForegroundService.start(); // keep the process alive in the background (best-effort)
     _loadSims();
   }
 
@@ -72,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: OutlinedButton.icon(
           onPressed: () async {
             await _gateway.stop();
+            await ForegroundService.stop();
             await widget.storage.clear();
             widget.onUnenrolled();
           },

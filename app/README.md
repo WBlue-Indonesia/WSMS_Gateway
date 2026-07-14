@@ -67,11 +67,26 @@ device enrollment token from the admin, grant SMS + phone permissions.
 `POST_NOTIFICATIONS` + `FOREGROUND_SERVICE(_DATA_SYNC)` (keep-alive),
 `RECEIVE_BOOT_COMPLETED` + battery-optimization exemption (survival, best-effort).
 
-## Known next steps
+## Survival & wake
 
-- Move the `Gateway` into a `flutter_foreground_task` isolate so the socket
-  survives the app being backgrounded (dependency + manifest already wired).
-  Note the Android 15 foreground-service time cap and OEM-killer reality
-  (amendment F8) — survival is best-effort; the server's fast-reconnect + wake +
-  requeue path is the real guarantee.
-- FCM high-priority wake for force-stopped processes has hard limits (F6).
+- **Foreground service** (`foreground.dart`, flutter_foreground_task): started on
+  the home screen, holds an ongoing notification + wakelock to keep the process (and
+  the main-isolate `Gateway`) alive in the background. Survival is **best-effort**
+  (amendment F8): Android 15 caps a dataSync FGS at ~6h/24h and OEM killers can still
+  win — the server's fast reconnect + FCM wake + presence-driven requeue is the real
+  guarantee.
+- **FCM wake** (`push.dart`): on launch the app fetches its FCM token and reports it
+  in the `hello` frame; the server sends a high-priority data message to wake this
+  device when work is queued for it while it is offline. Force-stopped processes
+  cannot be woken (F6) — the server tracks `WakeMisses` and the admin flags such phones.
+
+### Firebase setup (required for FCM wake only)
+
+The repo ships a **placeholder** `android/app/google-services.json` so the project
+builds. FCM does nothing until you replace it:
+
+1. Create a Firebase project, add an Android app with package `id.wblue.wsms_sender`.
+2. Download the real `google-services.json` into `android/app/`.
+3. On the server, set `WSMS_FCM_CREDENTIALS` (service-account JSON) + `WSMS_FCM_PROJECT_ID`.
+
+Without this the app runs fine; the server simply cannot wake an offline device.

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/io.dart';
 
 import 'config.dart';
+import 'push.dart';
 import 'storage.dart';
 import 'telephony.dart';
 
@@ -106,7 +107,12 @@ class Gateway {
   }
 
   Future<void> _sendHello() async {
-    _send(FrameType.hello, {'app_version': '0.1.0', 'os': 'android', 'model': 'unknown'});
+    _send(FrameType.hello, {
+      'app_version': '0.1.0',
+      'os': 'android',
+      'model': 'unknown',
+      if (Push.token != null) 'push_token': Push.token,
+    });
   }
 
   /// Reads SIMs from the OS and reports them so the server can route on-net.

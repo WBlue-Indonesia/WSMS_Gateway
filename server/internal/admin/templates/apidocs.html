@@ -1,0 +1,35 @@
+{{define "content"}}
+<h1>API Documentation</h1>
+<p class="muted">
+  Self-hosted reference. Machine-readable spec:
+  <a href="/admin/openapi.json" target="_blank">openapi.json</a> (import into Postman / Insomnia).
+</p>
+
+<div class="callout">
+  <strong>Auth.</strong> Client endpoints use a bearer token:
+  <code>Authorization: Bearer wsms_&lt;prefix&gt;.&lt;secret&gt;</code>.
+  Devices use <code>Bearer dev_&lt;device_id&gt;.&lt;device_secret&gt;</code> on the WebSocket.
+</div>
+
+<table class="grid api">
+  <thead><tr><th>Method</th><th>Path</th><th>Scope</th><th>Description</th></tr></thead>
+  <tbody>
+  {{range .Endpoints}}
+    <tr>
+      <td><span class="method {{lower .Method}}">{{.Method}}</span></td>
+      <td class="mono">{{.Path}}</td>
+      <td class="mono small">{{.Scope}}</td>
+      <td>
+        {{.Desc}}
+        {{if .Body}}<pre class="body-sample">{{.Body}}</pre>{{end}}
+      </td>
+    </tr>
+  {{end}}
+  </tbody>
+</table>
+
+<h2>Example</h2>
+<pre class="body-sample">curl -X POST $BASE/v1/messages \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"to":"0812-3456-7890","message":"Kode OTP 123456","ttl_seconds":300}'</pre>
+{{end}}

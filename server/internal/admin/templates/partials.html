@@ -1,0 +1,16 @@
+{{define "statusPill"}}<span class="pill {{badge .}}">{{.}}</span>{{end}}
+
+{{define "rows"}}
+{{range .Messages}}
+  <tr hx-get="/admin/messages/{{.ID}}" hx-target="#drawer" style="cursor:pointer">
+    <td class="mono">{{fmtTime .CreatedAt}}</td>
+    <td class="mono">{{maskMSISDN .TargetMSISDN}}</td>
+    <td>{{.TargetOperator}}</td>
+    <td>{{template "statusPill" (printf "%s" .Status)}}</td>
+    <td class="num">{{.Segments}}</td>
+    <td class="mono muted">{{shortID .ID}}</td>
+  </tr>
+{{else}}
+  <tr><td colspan="6" class="muted">no messages</td></tr>
+{{end}}
+{{end}}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WSMS Admin</title>
+  <link rel="stylesheet" href="/admin/static/admin.css">
+  <script src="/admin/static/htmx.min.js" defer></script>
+</head>
+<body>
+{{if .User}}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">WSMS<span>Gateway</span></div>
+    <nav>
+      <a href="/admin" class="{{if eq .Page "overview"}}active{{end}}">Overview</a>
+      <a href="/admin/messages" class="{{if eq .Page "messages"}}active{{end}}">Messages</a>
+      <a href="/admin/fleet" class="{{if eq .Page "fleet"}}active{{end}}">Fleet</a>
+      <a href="/admin/clients" class="{{if eq .Page "clients"}}active{{end}}">Clients &amp; Keys</a>
+      <a href="/admin/enrollment" class="{{if eq .Page "enrollment"}}active{{end}}">Enrollment</a>
+      <a href="/admin/apidocs" class="{{if eq .Page "apidocs"}}active{{end}}">API Docs</a>
+    </nav>
+    <form class="logout" method="post" action="/admin/logout">
+      <div class="who">{{.User.username}} <span class="role">{{.User.role}}</span></div>
+      <button type="submit">Log out</button>
+    </form>
+  </aside>
+  <main class="content">
+    {{template "content" .}}
+  </main>
+</div>
+{{else}}
+  <main class="auth">{{template "content" .}}</main>
+{{end}}
+</body>
+</html>

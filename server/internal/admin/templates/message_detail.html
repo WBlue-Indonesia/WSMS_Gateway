@@ -1,0 +1,35 @@
+{{define "message_detail"}}
+<div class="drawer-head">
+  <h2>Message</h2>
+  <span class="mono muted">{{.M.ID}}</span>
+</div>
+
+<dl class="kv">
+  <dt>To</dt>
+  <dd>
+    <span id="msisdn">{{maskMSISDN .M.TargetMSISDN}}</span>
+    {{if or (eq .Role "owner") (eq .Role "operator") (eq .Role "support")}}
+      <button class="link" hx-post="/admin/messages/{{.M.ID}}/unmask" hx-target="#msisdn" hx-swap="outerHTML"
+              hx-vals='{"reason":"support lookup"}'>unmask</button>
+    {{end}}
+  </dd>
+  <dt>Target operator</dt><dd>{{.M.TargetOperator}}</dd>
+  <dt>Assigned</dt><dd>{{if .M.AssignedOperator}}{{.M.AssignedOperator}}{{if ne (printf "%s" .M.AssignedOperator) (printf "%s" .M.TargetOperator)}} <span class="pill warn">fallback</span>{{else}} <span class="pill ok">on-net</span>{{end}}{{else}}—{{end}}</dd>
+  <dt>Status</dt><dd>{{template "statusPill" (printf "%s" .M.Status)}}</dd>
+  <dt>Encoding</dt><dd>{{.M.Encoding}} · {{.M.Segments}} seg</dd>
+  <dt>Attempts</dt><dd>{{.M.Attempts}} / {{.M.MaxAttempts}}</dd>
+  <dt>Expires</dt><dd>{{fmtTime .M.ExpiresAt}}</dd>
+  {{if .M.LastError}}<dt>Last error</dt><dd class="err-txt">{{.M.LastError}}</dd>{{end}}
+</dl>
+
+<div class="body-box">{{.M.Body}}</div>
+
+<h3>Lifecycle</h3>
+<ol class="timeline">
+{{range .Events}}
+  <li><span class="ev">{{.EventType}}</span><span class="mono muted">{{fmtTime .CreatedAt}}</span></li>
+{{else}}
+  <li class="muted">no events</li>
+{{end}}
+</ol>
+{{end}}

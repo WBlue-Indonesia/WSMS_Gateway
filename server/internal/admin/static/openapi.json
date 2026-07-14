@@ -1,0 +1,129 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WSMS-Gateway API",
+    "version": "0.1.0",
+    "description": "Self-hosted SMS gateway. Submit messages; they are routed to a dual-SIM Android device on the same operator (on-net) with random fallback."
+  },
+  "servers": [{ "url": "/" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/v1/messages": {
+      "post": {
+        "summary": "Submit an SMS",
+        "description": "Server normalizes the MSISDN, detects the operator, computes encoding + segments, and queues the message.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SubmitRequest" },
+              "example": { "to": "0812-3456-7890", "message": "Kode OTP 123456", "ttl_seconds": 300, "dedup_key": "otp-1", "routing_policy": "ON_NET_PREF" }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Queued", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitResponse" } } } },
+          "200": { "description": "Idempotent replay (same dedup_key + payload)" },
+          "400": { "description": "Invalid MSISDN or body" },
+          "401": { "description": "Missing/invalid bearer token" },
+          "409": { "description": "dedup_key reused with a different payload" }
+        }
+      },
+      "get": {
+        "summary": "List recent messages",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "operator", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/v1/messages/{id}": {
+      "get": {
+        "summary": "Get a message",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "include", "in": "query", "schema": { "type": "string", "enum": ["events"] } }
+        ],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
+    "/v1/messages/{id}/cancel": {
+      "post": {
+        "summary": "Cancel a message",
+        "description": "200 CANCELLED if still queued; 202 cancel_requested if in flight; 409 if terminal.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Cancelled" }, "202": { "description": "Cancel requested" }, "409": { "description": "Already terminal" } }
+      }
+    },
+    "/v1/devices": { "get": { "summary": "List devices", "responses": { "200": { "description": "OK" } } } },
+    "/v1/sims": {
+      "get": {
+        "summary": "List SIMs",
+        "parameters": [{ "name": "on_net_ready", "in": "query", "schema": { "type": "boolean" }, "description": "Add per-operator READY-on-online counts" }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/v1/device/enroll": {
+      "post": {
+        "summary": "Pair a device",
+        "description": "Exchange an enrollment token for device_id + device_secret (shown once).",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EnrollRequest" } } } },
+        "responses": { "200": { "description": "OK" }, "401": { "description": "Invalid/expired token" } }
+      }
+    },
+    "/healthz": { "get": { "summary": "Liveness", "security": [], "responses": { "200": { "description": "OK" } } } },
+    "/readyz": { "get": { "summary": "Readiness (coarse)", "security": [], "responses": { "200": { "description": "Ready" }, "503": { "description": "Not ready" } } } }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "description": "wsms_<prefix>.<secret>" }
+    },
+    "schemas": {
+      "SubmitRequest": {
+        "type": "object",
+        "required": ["to", "message"],
+        "properties": {
+          "to": { "type": "string", "description": "Indonesian MSISDN in any form (0812.., +62.., 62..)" },
+          "message": { "type": "string" },
+          "ttl_seconds": { "type": "integer", "description": "Overrides the default TTL" },
+          "dedup_key": { "type": "string", "description": "Idempotency key, unique per client" },
+          "routing_policy": { "type": "string", "enum": ["ON_NET_PREF", "ON_NET_STRICT", "ANY"], "default": "ON_NET_PREF" },
+          "callback_url": { "type": "string", "format": "uri" }
+        }
+      },
+      "SubmitResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string" },
+          "target_operator": { "type": "string" },
+          "encoding": { "type": "string", "enum": ["GSM7", "UCS2"] },
+          "segments": { "type": "integer" },
+          "expires_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EnrollRequest": {
+        "type": "object",
+        "required": ["token", "name"],
+        "properties": {
+          "token": { "type": "string" },
+          "name": { "type": "string" },
+          "os": { "type": "string" },
+          "model": { "type": "string" },
+          "sims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "subscription_id": { "type": "integer" },
+                "slot": { "type": "integer" },
+                "carrier_name": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

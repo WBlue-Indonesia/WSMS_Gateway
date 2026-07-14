@@ -1,0 +1,31 @@
+{{define "content"}}
+<h1>Messages</h1>
+
+<form class="filters" hx-get="/admin/messages/rows" hx-target="#rows" hx-trigger="submit, change from:select, keyup delay:400ms from:input[name=q]" hx-push-url="false">
+  <input type="search" name="q" placeholder="MSISDN / id / dedup_key" value="{{.Q}}">
+  <select name="status">
+    <option value="">any status</option>
+    {{range list "QUEUED" "ROUTING" "DISPATCHED" "AWAITING_ACK" "SENT" "SENT_UNCONFIRMED" "DELIVERED" "FAILED" "EXPIRED" "CANCELLED"}}
+      <option value="{{.}}" {{if eq . $.Status}}selected{{end}}>{{.}}</option>
+    {{end}}
+  </select>
+  <select name="operator">
+    <option value="">any operator</option>
+    {{range list "TELKOMSEL" "INDOSAT" "XL" "AXIS" "TRI" "SMARTFREN" "UNKNOWN"}}
+      <option value="{{.}}" {{if eq . $.Operator}}selected{{end}}>{{.}}</option>
+    {{end}}
+  </select>
+</form>
+
+<div class="split">
+  <table class="grid">
+    <thead>
+      <tr><th>Time</th><th>To</th><th>Operator</th><th>Status</th><th>Seg</th><th></th></tr>
+    </thead>
+    <tbody id="rows">
+      {{template "rows" .}}
+    </tbody>
+  </table>
+  <aside id="drawer" class="drawer"><p class="muted">Select a message to see its lifecycle.</p></aside>
+</div>
+{{end}}

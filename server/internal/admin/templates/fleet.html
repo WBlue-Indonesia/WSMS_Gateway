@@ -1,0 +1,42 @@
+{{define "content"}}
+<h1>Fleet</h1>
+<p class="muted">Devices and their SIMs · quota is segments/day</p>
+
+{{range .Devices}}
+<div class="card device">
+  <div class="device-head">
+    <div>
+      <strong>{{.D.Name}}</strong>
+      <span class="mono muted">{{shortID .D.ID}}</span>
+    </div>
+    <div>
+      {{if .Online}}<span class="pill ok">online</span>{{else}}<span class="pill bad">offline</span>{{end}}
+      <span class="muted">seen {{since .D.LastSeenAt}}</span>
+      {{if gt .D.WakeMisses 0}}<span class="pill warn">wake-misses {{.D.WakeMisses}}</span>{{end}}
+    </div>
+  </div>
+  <table class="grid">
+    <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota</th><th>Health</th></tr></thead>
+    <tbody>
+    {{range .Sims}}
+      <tr>
+        <td>{{.Slot}} <span class="muted">sub {{.SubscriptionID}}</span></td>
+        <td>{{.Operator}}{{if .OperatorLocked}} 🔒{{end}}</td>
+        <td class="mono">{{if .MSISDN}}{{maskMSISDN .MSISDN}}{{else}}—{{end}}</td>
+        <td>{{template "statusPill" (printf "%s" .Status)}}</td>
+        <td>
+          <div class="quota"><div class="quota-bar" style="width:{{quotaPct .SentToday .DailyQuota}}%"></div></div>
+          <span class="mono muted">{{.SentToday}}/{{.DailyQuota}}</span>
+        </td>
+        <td class="num">{{.HealthScore}}</td>
+      </tr>
+    {{else}}
+      <tr><td colspan="6" class="muted">no SIMs reported</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<div class="card"><p class="muted">No devices enrolled yet. Issue an enrollment token under <a href="/admin/enrollment">Enrollment</a>.</p></div>
+{{end}}
+{{end}}

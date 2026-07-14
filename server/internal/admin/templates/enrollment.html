@@ -1,0 +1,34 @@
+{{define "content"}}
+<h1>Enrollment</h1>
+<p class="muted">Issue a single-use token (valid 24h) to pair a new phone.</p>
+
+{{if .Issued}}
+<div class="callout">
+  <strong>New enrollment token — shown once:</strong>
+  <code class="token">{{.Issued}}</code>
+  <p class="muted">Enter it in the app's pairing screen together with the server URL.</p>
+</div>
+{{end}}
+
+<form method="post" action="/admin/enrollment" class="inline-form">
+  <input name="label" placeholder="Label (e.g. HP-D warehouse)">
+  <button type="submit">Issue token</button>
+</form>
+
+<table class="grid">
+  <thead><tr><th>Created</th><th>Label</th><th>Status</th><th>Expires</th><th>Device</th></tr></thead>
+  <tbody>
+  {{range .Tokens}}
+    <tr>
+      <td class="mono">{{fmtTime .CreatedAt}}</td>
+      <td>{{if .Label}}{{.Label}}{{else}}—{{end}}</td>
+      <td>{{if .Used}}<span class="pill muted">used</span>{{else}}<span class="pill ok">available</span>{{end}}</td>
+      <td class="mono">{{fmtTime .ExpiresAt}}</td>
+      <td class="mono muted">{{if .DeviceID}}paired{{else}}—{{end}}</td>
+    </tr>
+  {{else}}
+    <tr><td colspan="5" class="muted">no tokens issued</td></tr>
+  {{end}}
+  </tbody>
+</table>
+{{end}}

@@ -1,0 +1,30 @@
+{{define "content"}}
+<h1>Clients &amp; API keys</h1>
+<p class="muted">API callers and their bearer keys. Secrets are never stored in plaintext.</p>
+
+{{range .Clients}}
+<div class="card">
+  <div class="device-head">
+    <div><strong>{{.Client.Name}}</strong> <span class="mono muted">{{shortID .Client.ID}}</span></div>
+    <div>{{if .Client.Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">disabled</span>{{end}}</div>
+  </div>
+  <table class="grid">
+    <thead><tr><th>Key prefix</th><th>Scopes</th><th>Status</th><th>Last used</th></tr></thead>
+    <tbody>
+    {{range .Keys}}
+      <tr>
+        <td class="mono">wsms_{{.Prefix}}.••••</td>
+        <td class="mono small">{{.Scopes}}</td>
+        <td>{{if .Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">revoked</span>{{end}}</td>
+        <td class="mono">{{fmtTimeP .LastUsedAt}}</td>
+      </tr>
+    {{else}}
+      <tr><td colspan="4" class="muted">no keys</td></tr>
+    {{end}}
+    </tbody>
+  </table>
+</div>
+{{else}}
+<div class="card"><p class="muted">No clients yet.</p></div>
+{{end}}
+{{end}}

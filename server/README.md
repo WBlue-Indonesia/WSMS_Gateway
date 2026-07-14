@@ -19,6 +19,7 @@ internal/
   fleet              device/SIM upsert (enroll + sim_report)
   dispatch           claim → route → send → lifecycle (the delivery engine)
   api                REST handlers, API-key auth, device enroll + WS
+  admin              server-rendered /admin console (html/template + vendored htmx)
   secret             Argon2id hashing, token generation
 migrations           hand-authored SQL (AutoMigrate is used in dev)
 ```
@@ -31,10 +32,27 @@ cp .env.example .env
 go run ./cmd/wsmsd
 ```
 
-On first start it prints two **bootstrap credentials** (once) to the logs:
+On first start it prints three **bootstrap credentials** (once) to the logs:
 
 - a client API token `wsms_<prefix>.<secret>` — for calling `/v1/messages`
 - a device enrollment token — for pairing the first phone
+- the `admin` console login (username `admin` + a random password)
+
+## Admin console
+
+Open **`http://localhost:8080/admin`** and log in with the bootstrap credentials.
+Server-rendered (Go `html/template` + vendored htmx, no external assets):
+
+- **Overview** — devices/SIMs online, queue depth, delivery success %, on-net vs
+  fallback, per-operator volume + capacity, segments today
+- **Messages** — searchable log (MSISDN masked by default), detail drawer with the
+  full lifecycle timeline and the routing decision (on-net / fallback); role-gated
+  **unmask** writes an audit row
+- **Fleet** — per-device presence + per-SIM operator, status, quota bar, health
+- **Clients & keys**, **Enrollment** (issue pairing tokens), **API Docs** (rendered
+  reference + downloadable `openapi.json`)
+
+Roles (RBAC): `owner` / `operator` / `support` / `readonly`.
 
 ## API quickstart
 

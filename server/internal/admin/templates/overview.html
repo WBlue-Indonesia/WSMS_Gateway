@@ -1,0 +1,60 @@
+{{define "content"}}
+<h1>Overview</h1>
+<p class="muted">Last 24 hours · live fleet state</p>
+
+<div class="tiles">
+  <div class="tile">
+    <div class="tile-label">Devices online</div>
+    <div class="tile-value">{{.OnlineDevices}} <span class="of">/ {{.TotalDevices}}</span></div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">SIMs ready</div>
+    <div class="tile-value">{{.ReadySims}} <span class="of">/ {{.TotalSims}}</span></div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Queue depth</div>
+    <div class="tile-value">{{.QueueDepth}}</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Delivery success</div>
+    <div class="tile-value">{{pct .SuccessNum .SuccessDen}}</div>
+    <div class="tile-sub">{{.Delivered}} delivered · {{.Failed}} failed</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">On-net vs fallback</div>
+    <div class="tile-value">{{.OnNet}} <span class="of">/ {{.Fallback}} fb</span></div>
+    <div class="tile-sub">{{pct .OnNet (addI .OnNet .Fallback)}} on-net</div>
+  </div>
+  <div class="tile">
+    <div class="tile-label">Segments today</div>
+    <div class="tile-value">{{.SegToday}}</div>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <h2>Traffic by target operator</h2>
+    <table class="mini">
+      <tbody>
+      {{range .Operators}}
+        <tr><td>{{.K}}</td><td class="num">{{.N}}</td></tr>
+      {{else}}
+        <tr><td class="muted" colspan="2">no traffic in window</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>On-net capacity (ready SIMs)</h2>
+    <table class="mini">
+      <tbody>
+      {{range .OpReady}}
+        <tr><td>{{.K}}</td><td class="num">{{.N}}</td></tr>
+      {{else}}
+        <tr><td class="muted" colspan="2">no SIM online</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

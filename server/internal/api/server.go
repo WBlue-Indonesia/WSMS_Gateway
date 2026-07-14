@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nizwar/wsms-gateway/server/internal/admin"
 	"github.com/nizwar/wsms-gateway/server/internal/config"
 	"github.com/nizwar/wsms-gateway/server/internal/models"
 	"github.com/nizwar/wsms-gateway/server/internal/router"
@@ -17,10 +18,11 @@ type Server struct {
 	hub    *ws.Hub
 	engine *router.Engine
 	cfg    config.Config
+	admin  *admin.Server
 }
 
 func New(db *gorm.DB, hub *ws.Hub, engine *router.Engine, cfg config.Config) *Server {
-	return &Server{db: db, hub: hub, engine: engine, cfg: cfg}
+	return &Server{db: db, hub: hub, engine: engine, cfg: cfg, admin: admin.New(db, hub)}
 }
 
 // Handler builds the gin engine with all routes.
@@ -31,6 +33,11 @@ func (s *Server) Handler() http.Handler {
 
 	r.GET("/healthz", s.healthz)
 	r.GET("/readyz", s.readyz)
+
+	// Admin console (server-rendered, mounted in this same binary under /admin).
+	if s.admin != nil {
+		s.admin.Mount(r)
+	}
 
 	v1 := r.Group("/v1")
 	{

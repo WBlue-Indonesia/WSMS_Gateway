@@ -138,3 +138,33 @@ CREATE TABLE IF NOT EXISTS enrollment_tokens (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_enroll_hash ON enrollment_tokens(token_hash);
+
+-- Admin console (docs/07 §8). GORM pluralizes these to admin_users / admin_audits.
+CREATE TABLE IF NOT EXISTS admin_users (
+    id            uuid PRIMARY KEY,
+    username      text NOT NULL UNIQUE,
+    password_hash text NOT NULL,
+    role          text NOT NULL DEFAULT 'readonly'
+                    CHECK (role IN ('owner','operator','support','readonly')),
+    active        boolean NOT NULL DEFAULT true,
+    last_login_at timestamptz,
+    created_at    timestamptz NOT NULL DEFAULT now(),
+    updated_at    timestamptz NOT NULL DEFAULT now(),
+    deleted_at    timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS admin_audits (
+    id          uuid PRIMARY KEY,
+    actor       text NOT NULL,
+    actor_role  text,
+    action      text NOT NULL,
+    target_type text,
+    target_id   text,
+    reason      text,
+    before      jsonb,
+    after       jsonb,
+    source_ip   text,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_admin_audits_action ON admin_audits(action);
+CREATE INDEX IF NOT EXISTS ix_admin_audits_time ON admin_audits(created_at);

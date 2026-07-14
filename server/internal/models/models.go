@@ -233,10 +233,39 @@ type EnrollmentToken struct {
 	Base
 }
 
+// AdminUser is a human operator of the admin console (distinct from client API keys).
+// Roles: owner | operator | support | readonly (docs/07 §3).
+type AdminUser struct {
+	ID           string     `gorm:"type:uuid;primaryKey" json:"id"`
+	Username     string     `gorm:"uniqueIndex;not null" json:"username"`
+	PasswordHash string     `gorm:"not null" json:"-"`
+	Role         string     `gorm:"not null;default:'readonly'" json:"role"`
+	Active       bool       `gorm:"not null;default:true" json:"active"`
+	LastLoginAt  *time.Time `json:"last_login_at,omitempty"`
+	SoftBase
+}
+
+// AdminAudit is the administrative audit trail — a superset of docs/06 §1.9 that adds
+// actor_role and reason (docs/07 §8). Records privileged actions and PII reveals.
+type AdminAudit struct {
+	ID         string         `gorm:"type:uuid;primaryKey" json:"id"`
+	Actor      string         `gorm:"not null" json:"actor"`
+	ActorRole  string         `json:"actor_role"`
+	Action     string         `gorm:"not null;index" json:"action"`
+	TargetType string         `json:"target_type"`
+	TargetID   string         `json:"target_id"`
+	Reason     string         `json:"reason"`
+	Before     datatypes.JSON `json:"before,omitempty"`
+	After      datatypes.JSON `json:"after,omitempty"`
+	SourceIP   string         `json:"source_ip"`
+	CreatedAt  time.Time      `gorm:"not null;default:now();index" json:"created_at"`
+}
+
 // AllModels lists every table for AutoMigrate.
 func AllModels() []any {
 	return []any{
 		&Client{}, &APIKey{}, &Device{}, &Sim{}, &Message{}, &MessageEvent{},
 		&MessageSend{}, &OperatorPrefix{}, &EnrollmentToken{},
+		&AdminUser{}, &AdminAudit{},
 	}
 }

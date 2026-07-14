@@ -40,7 +40,7 @@ Start with **[`docs/00-overview.md`](docs/00-overview.md)**.
 | Path | What |
 |------|------|
 | [`docs/`](docs) | The full design (00–09). Start at `00-overview.md`. |
-| [`server/`](server) | Go backend — REST API, WebSocket hub, operator-aware dispatcher. Compiles, tested, verified end-to-end against Postgres. See [`server/README.md`](server/README.md). |
+| [`server/`](server) | Go backend — REST API, WebSocket hub, operator-aware dispatcher, **and the `/admin` web console**. Compiles, tested, verified end-to-end against Postgres. See [`server/README.md`](server/README.md). |
 | [`app/`](app) | Flutter Android sender app — dual-SIM `SmsManager` bridge, WebSocket client, enrollment. See [`app/README.md`](app/README.md). |
 
 ## Status
@@ -50,9 +50,13 @@ Design complete (docs 00–09) + working MVP:
 - **Server** — operator detection, on-net routing + random fallback, atomic quota
   reserve, full delivery lifecycle (DISPATCHED→ACK→SENT→DELIVERED), idempotency —
   all verified live against Postgres with a simulated device fleet.
-- **App** — Kotlin telephony channel + Dart WS gateway + enrollment; analyzes clean.
+- **Admin console** (`/admin`, doc 07) — server-rendered Go + htmx: overview KPIs,
+  message log + detail drawer + lifecycle, PII mask/role-gated unmask (audited),
+  fleet + per-SIM quota, clients/keys, enrollment, integrated API docs + OpenAPI.
+  Verified end-to-end.
+- **App** — Kotlin telephony channel + Dart WS gateway + enrollment; compiles clean.
 
-Not yet built: admin dashboard (doc 07), FCM wake, foreground-service isolate, webhooks.
+Not yet built: FCM wake, foreground-service isolate, webhooks, signed API (F3).
 
 ## Stack
 

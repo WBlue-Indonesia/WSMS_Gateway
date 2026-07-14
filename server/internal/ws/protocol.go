@@ -36,6 +36,7 @@ type HelloData struct {
 	AppVersion string `json:"app_version"`
 	OS         string `json:"os"`
 	Model      string `json:"model"`
+	PushToken  string `json:"push_token,omitempty"` // FCM token for wake (docs/01 §7)
 }
 
 type SimInfo struct {

@@ -1,7 +1,11 @@
 package api
 
 import (
+	"bytes"
+	"io"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,11 +36,43 @@ func (s *Server) clientAuth(scope string) gin.HandlerFunc {
 			abort(c, http.StatusForbidden, "missing scope: "+scope)
 			return
 		}
+		if !s.verifySigning(c, key) {
+			abort(c, http.StatusUnauthorized, "invalid request signature")
+			return
+		}
 		now := time.Now()
 		s.db.Model(&models.APIKey{}).Where("id = ?", key.ID).Update("last_used_at", now)
 		c.Set("client_id", key.ClientID)
 		c.Next()
 	}
+}
+
+// verifySigning enforces inbound HMAC request signing when the key has a signing
+// secret configured (amendment F3). The signing secret is stored AES-GCM-encrypted
+// (SigningSecretEnc) — distinct from the one-way Argon2id bearer hash, which cannot
+// be used to recompute an HMAC. Signature = HMAC-SHA256(signingSecret, ts + "." + body).
+func (s *Server) verifySigning(c *gin.Context, key models.APIKey) bool {
+	if len(key.SigningSecretEnc) == 0 {
+		return true // signing not enabled for this key
+	}
+	sigHdr := c.GetHeader("X-WSMS-Signature")
+	tsHdr := c.GetHeader("X-WSMS-Timestamp")
+	if sigHdr == "" || tsHdr == "" {
+		return false
+	}
+	ts, err := strconv.ParseInt(tsHdr, 10, 64)
+	if err != nil || math.Abs(float64(time.Now().Unix()-ts)) > 300 {
+		return false // stale/invalid timestamp (±5 min window)
+	}
+	body, _ := io.ReadAll(c.Request.Body)
+	c.Request.Body = io.NopCloser(bytes.NewReader(body)) // restore for the handler
+	sk, err := secret.Open(s.cfg.MasterKey[:], key.SigningSecretEnc)
+	if err != nil {
+		return false
+	}
+	want := secret.HMACSHA256Hex(sk, []byte(tsHdr+"."+string(body)))
+	got := strings.TrimPrefix(sigHdr, "sha256=")
+	return secret.EqualHex(want, got)
 }
 
 func parseBearer(h string) (prefix, secretPart string, ok bool) {

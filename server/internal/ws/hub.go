@@ -59,9 +59,13 @@ func (h *Hub) unregister(c *Conn) {
 
 func (h *Hub) setDeviceStatus(deviceID string, status models.DeviceStatus) {
 	now := time.Now()
+	upd := map[string]any{"status": status, "last_seen_at": now, "updated_at": now}
+	if status == models.DevOnline {
+		upd["wake_misses"] = 0 // reconnected → clear the force-stop suspicion (F6)
+	}
 	h.db.Model(&models.Device{}).
 		Where("id = ? AND status <> ?", deviceID, models.DevDisabled).
-		Updates(map[string]any{"status": status, "last_seen_at": now, "updated_at": now})
+		Updates(upd)
 }
 
 // SendTo delivers a frame to a device. Returns ErrDeviceOffline if not connected.

@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/nizwar/wsms-gateway/server/internal/config"
@@ -28,18 +29,30 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+// Waker revives an offline device via a push wake (implemented by internal/fcm).
+type Waker interface {
+	Wake(ctx context.Context, deviceToken string) error
+}
+
 type Dispatcher struct {
 	db     *gorm.DB
 	engine *router.Engine
 	hub    *ws.Hub
 	cfg    config.Config
+
+	waker    Waker
+	wmu      sync.Mutex
+	lastWake map[string]time.Time
 }
 
 func New(db *gorm.DB, engine *router.Engine, hub *ws.Hub, cfg config.Config) *Dispatcher {
-	d := &Dispatcher{db: db, engine: engine, hub: hub, cfg: cfg}
+	d := &Dispatcher{db: db, engine: engine, hub: hub, cfg: cfg, lastWake: map[string]time.Time{}}
 	hub.SetHandler(d.HandleFrame)
 	return d
 }
+
+// SetWaker enables FCM wake of offline devices when work is waiting.
+func (d *Dispatcher) SetWaker(w Waker) { d.waker = w }
 
 // Run starts the worker pool and the reaper. Blocks until ctx is cancelled.
 func (d *Dispatcher) Run(ctx context.Context) {
@@ -83,7 +96,9 @@ func (d *Dispatcher) dispatchOne(ctx context.Context) bool {
 	choice, err := d.engine.Route(ctx, &msg)
 	if err != nil {
 		if errors.Is(err, router.ErrNoCapacity) {
-			// No SIM right now. Put it back to QUEUED; the reaper expires it if TTL passes.
+			// No SIM right now. Try to wake an offline device that could take it, then
+			// put it back to QUEUED; the reaper expires it if TTL passes.
+			d.wakeFor(ctx, &msg)
 			d.setStatus(ctx, msg.ID, models.MsgQueued, "no capacity, awaiting SIM")
 		} else {
 			slog.Error("route error", "msg", msg.ID, "err", err)
@@ -179,7 +194,13 @@ func (d *Dispatcher) HandleFrame(deviceID string, f *ws.Frame) {
 				slog.Error("sim_report upsert", "device", deviceID, "err", err)
 			}
 		}
-	case ws.TypeHello, ws.TypeHeartbeat:
+	case ws.TypeHello:
+		var h ws.HelloData
+		if f.Decode(&h) == nil && h.PushToken != "" {
+			d.db.Model(&models.Device{}).Where("id = ?", deviceID).
+				Update("push_token", h.PushToken)
+		}
+	case ws.TypeHeartbeat:
 		// presence already refreshed by the read pump; nothing more to do here
 	default:
 		slog.Debug("unhandled frame", "type", f.Type, "device", deviceID)
@@ -323,6 +344,50 @@ func (d *Dispatcher) event(ctx context.Context, msgID string, ev models.EventTyp
 	d.db.WithContext(ctx).Create(&models.MessageEvent{
 		ID: models.NewID(), MessageID: msgID, EventType: ev, Detail: raw, CreatedAt: time.Now(),
 	})
+}
+
+// wakeFor pushes an FCM wake to offline devices that could serve this message.
+// Throttled per device; increments Device.WakeMisses (reset on reconnect) so the
+// admin can flag chronically-unwakeable (force-stopped) phones (amendment F6).
+func (d *Dispatcher) wakeFor(ctx context.Context, msg *models.Message) {
+	if d.waker == nil {
+		return
+	}
+	type cand struct {
+		ID        string
+		PushToken string
+	}
+	q := d.db.WithContext(ctx).Table("devices d").
+		Select("DISTINCT d.id, d.push_token").
+		Joins("JOIN sims s ON s.device_id = d.id").
+		Where("d.status <> ? AND d.push_token <> '' AND s.status = ? AND s.deleted_at IS NULL AND d.deleted_at IS NULL",
+			models.DevDisabled, models.SimReady)
+	if msg.RoutingPolicy == models.PolicyOnNetStrict {
+		q = q.Where("s.operator = ?", msg.TargetOperator)
+	}
+	var cands []cand
+	q.Limit(5).Scan(&cands)
+
+	for _, c := range cands {
+		if d.hub.Online(c.ID) || d.recentlyWoke(c.ID) {
+			continue
+		}
+		if err := d.waker.Wake(ctx, c.PushToken); err != nil {
+			slog.Warn("fcm wake failed", "device", c.ID, "err", err)
+		}
+		d.db.WithContext(ctx).Model(&models.Device{}).Where("id = ?", c.ID).
+			Update("wake_misses", gorm.Expr("wake_misses + 1"))
+	}
+}
+
+func (d *Dispatcher) recentlyWoke(deviceID string) bool {
+	d.wmu.Lock()
+	defer d.wmu.Unlock()
+	if t, ok := d.lastWake[deviceID]; ok && time.Since(t) < 30*time.Second {
+		return true
+	}
+	d.lastWake[deviceID] = time.Now()
+	return false
 }
 
 func nowMs() int64 { return time.Now().UnixMilli() }

@@ -4,12 +4,13 @@
 -- can be added without the ALTER TYPE ... ADD VALUE transaction pitfall.
 
 CREATE TABLE IF NOT EXISTS clients (
-    id         uuid PRIMARY KEY,
-    name       text NOT NULL,
-    active     boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz
+    id                 uuid PRIMARY KEY,
+    name               text NOT NULL,
+    active             boolean NOT NULL DEFAULT true,
+    webhook_secret_enc bytea,                        -- AES-GCM; signs outbound webhooks (F3-style)
+    created_at         timestamptz NOT NULL DEFAULT now(),
+    updated_at         timestamptz NOT NULL DEFAULT now(),
+    deleted_at         timestamptz
 );
 CREATE INDEX IF NOT EXISTS ix_clients_deleted ON clients(deleted_at);
 
@@ -138,6 +139,25 @@ CREATE TABLE IF NOT EXISTS enrollment_tokens (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_enroll_hash ON enrollment_tokens(token_hash);
+
+-- Outbound status callbacks (at-least-once, retried). One row per message (unique).
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+    id              uuid PRIMARY KEY,
+    message_id      uuid NOT NULL UNIQUE,
+    client_id       uuid,
+    url             text NOT NULL,
+    event           text NOT NULL,
+    status          text NOT NULL DEFAULT 'pending',   -- pending|sent|failed
+    attempts        int NOT NULL DEFAULT 0,
+    max_attempts    int NOT NULL DEFAULT 6,
+    last_code       int,
+    last_error      text,
+    next_attempt_at timestamptz NOT NULL,
+    delivered_at    timestamptz,
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    updated_at      timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_webhook_pending ON webhook_deliveries(status, next_attempt_at);
 
 -- Admin console (docs/07 §8). GORM pluralizes these to admin_users / admin_audits.
 CREATE TABLE IF NOT EXISTS admin_users (

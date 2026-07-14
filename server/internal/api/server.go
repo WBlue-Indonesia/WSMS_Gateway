@@ -22,7 +22,7 @@ type Server struct {
 }
 
 func New(db *gorm.DB, hub *ws.Hub, engine *router.Engine, cfg config.Config) *Server {
-	return &Server{db: db, hub: hub, engine: engine, cfg: cfg, admin: admin.New(db, hub)}
+	return &Server{db: db, hub: hub, engine: engine, cfg: cfg, admin: admin.New(db, hub, cfg)}
 }
 
 // Handler builds the gin engine with all routes.

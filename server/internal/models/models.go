@@ -120,10 +120,29 @@ func NewID() string {
 // ---- Tables ----------------------------------------------------------------
 
 type Client struct {
-	ID     string `gorm:"type:uuid;primaryKey" json:"id"`
-	Name   string `gorm:"not null" json:"name"`
-	Active bool   `gorm:"not null;default:true" json:"active"`
+	ID               string `gorm:"type:uuid;primaryKey" json:"id"`
+	Name             string `gorm:"not null" json:"name"`
+	Active           bool   `gorm:"not null;default:true" json:"active"`
+	WebhookSecretEnc []byte `json:"-"` // AES-GCM ciphertext; signs outbound webhooks (F3-style reversible secret)
 	SoftBase
+}
+
+// WebhookDelivery is one outbound status callback (at-least-once, retried with backoff).
+// Unique per message so a message is notified exactly once at its terminal state.
+type WebhookDelivery struct {
+	ID            string        `gorm:"type:uuid;primaryKey" json:"id"`
+	MessageID     string        `gorm:"type:uuid;uniqueIndex;not null" json:"message_id"`
+	ClientID      string        `gorm:"type:uuid;index" json:"client_id"`
+	URL           string        `gorm:"not null" json:"url"`
+	Event         MessageStatus `gorm:"type:text;not null" json:"event"`
+	Status        string        `gorm:"type:text;not null;default:'pending';index" json:"status"` // pending|sent|failed
+	Attempts      int           `gorm:"not null;default:0" json:"attempts"`
+	MaxAttempts   int           `gorm:"not null;default:6" json:"max_attempts"`
+	LastCode      int           `json:"last_code"`
+	LastError     string        `json:"last_error"`
+	NextAttemptAt time.Time     `gorm:"index;not null" json:"next_attempt_at"`
+	DeliveredAt   *time.Time    `json:"delivered_at,omitempty"`
+	Base
 }
 
 // APIKey — bearer credential for a client. Secret is stored ONLY as an Argon2id hash.
@@ -266,6 +285,6 @@ func AllModels() []any {
 	return []any{
 		&Client{}, &APIKey{}, &Device{}, &Sim{}, &Message{}, &MessageEvent{},
 		&MessageSend{}, &OperatorPrefix{}, &EnrollmentToken{},
-		&AdminUser{}, &AdminAudit{},
+		&AdminUser{}, &AdminAudit{}, &WebhookDelivery{},
 	}
 }

@@ -2,24 +2,47 @@
 <h1>Clients &amp; API keys</h1>
 <p class="muted">API callers and their bearer keys. Secrets are never stored in plaintext.</p>
 
+{{if .Reveal}}
+<div class="callout">
+  <strong>New {{.RevealKind}} secret — shown once:</strong>
+  <code class="token">{{.Reveal}}</code>
+  <p class="muted">
+    {{if eq .RevealKind "webhook"}}Verify webhooks with <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.
+    {{else}}Sign requests with headers <code>X-WSMS-Timestamp</code> and <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.{{end}}
+  </p>
+</div>
+{{end}}
+
 {{range .Clients}}
 <div class="card">
   <div class="device-head">
     <div><strong>{{.Client.Name}}</strong> <span class="mono muted">{{shortID .Client.ID}}</span></div>
-    <div>{{if .Client.Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">disabled</span>{{end}}</div>
+    <div>
+      {{if .Client.Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">disabled</span>{{end}}
+      {{if .WebhookSecret}}<span class="pill ok">webhook signed</span>{{else}}<span class="pill muted">webhook unsigned</span>{{end}}
+      <form method="post" action="/admin/clients/{{.Client.ID}}/webhook-secret" style="display:inline">
+        <button type="submit">{{if .WebhookSecret}}Rotate{{else}}Set{{end}} webhook secret</button>
+      </form>
+    </div>
   </div>
   <table class="grid">
-    <thead><tr><th>Key prefix</th><th>Scopes</th><th>Status</th><th>Last used</th></tr></thead>
+    <thead><tr><th>Key prefix</th><th>Scopes</th><th>Signing</th><th>Status</th><th>Last used</th><th></th></tr></thead>
     <tbody>
     {{range .Keys}}
       <tr>
         <td class="mono">wsms_{{.Prefix}}.••••</td>
         <td class="mono small">{{.Scopes}}</td>
+        <td>{{if .SigningSecretEnc}}<span class="pill ok">on</span>{{else}}<span class="pill muted">off</span>{{end}}</td>
         <td>{{if .Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">revoked</span>{{end}}</td>
         <td class="mono">{{fmtTimeP .LastUsedAt}}</td>
+        <td>
+          <form method="post" action="/admin/keys/{{.ID}}/enable-signing" style="display:inline">
+            <button type="submit">{{if .SigningSecretEnc}}Rotate{{else}}Enable{{end}} signing</button>
+          </form>
+        </td>
       </tr>
     {{else}}
-      <tr><td colspan="4" class="muted">no keys</td></tr>
+      <tr><td colspan="6" class="muted">no keys</td></tr>
     {{end}}
     </tbody>
   </table>

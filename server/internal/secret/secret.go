@@ -3,11 +3,15 @@
 package secret
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -71,4 +75,54 @@ func RandomToken(nBytes int) (string, error) {
 func SHA256Hex(s string) string {
 	sum := sha256.Sum256([]byte(s))
 	return hex.EncodeToString(sum[:])
+}
+
+// HMACSHA256Hex returns hex(HMAC-SHA256(key, msg)).
+func HMACSHA256Hex(key, msg []byte) string {
+	h := hmac.New(sha256.New, key)
+	h.Write(msg)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// EqualHex compares two hex signatures in constant time.
+func EqualHex(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
+// Seal encrypts plaintext with AES-256-GCM under a 32-byte key. Output is
+// nonce||ciphertext. Used for reversibly-stored secrets (webhook + signing keys, F3).
+func Seal(key, plaintext []byte) ([]byte, error) {
+	gcm, err := gcmFor(key)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	return gcm.Seal(nonce, nonce, plaintext, nil), nil
+}
+
+// Open reverses Seal.
+func Open(key, blob []byte) ([]byte, error) {
+	gcm, err := gcmFor(key)
+	if err != nil {
+		return nil, err
+	}
+	ns := gcm.NonceSize()
+	if len(blob) < ns {
+		return nil, errors.New("ciphertext too short")
+	}
+	return gcm.Open(nil, blob[:ns], blob[ns:], nil)
+}
+
+func gcmFor(key []byte) (cipher.AEAD, error) {
+	if len(key) != 32 {
+		return nil, errors.New("key must be 32 bytes")
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return cipher.NewGCM(block)
 }

@@ -12,6 +12,12 @@ func newEnrollToken() (plain, hash string) {
 	return plain, secret.SHA256Hex(plain)
 }
 
+func secretToken() (string, error) { return secret.RandomToken(32) }
+
+func sealSecret(key []byte, plain string) ([]byte, error) {
+	return secret.Seal(key, []byte(plain))
+}
+
 // Endpoint is one row in the human-readable API reference.
 type Endpoint struct {
 	Method string

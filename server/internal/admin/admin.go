@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nizwar/wsms-gateway/server/internal/config"
 	"github.com/nizwar/wsms-gateway/server/internal/models"
 	"github.com/nizwar/wsms-gateway/server/internal/secret"
 	"github.com/nizwar/wsms-gateway/server/internal/ws"
@@ -28,14 +29,15 @@ type session struct {
 type Server struct {
 	db  *gorm.DB
 	hub *ws.Hub
+	cfg config.Config
 
 	mu       sync.RWMutex
 	sessions map[string]session
 }
 
-func New(db *gorm.DB, hub *ws.Hub) *Server {
+func New(db *gorm.DB, hub *ws.Hub, cfg config.Config) *Server {
 	buildTemplates()
-	return &Server{db: db, hub: hub, sessions: map[string]session{}}
+	return &Server{db: db, hub: hub, cfg: cfg, sessions: map[string]session{}}
 }
 
 // Mount wires the admin routes onto the given gin engine and bootstraps the owner user.
@@ -60,6 +62,8 @@ func (s *Server) Mount(r *gin.Engine) {
 	a.GET("/enrollment", s.enrollmentPage)
 	a.POST("/enrollment", s.issueEnrollment)
 	a.GET("/clients", s.clientsPage)
+	a.POST("/clients/:id/webhook-secret", s.rotateWebhookSecret)
+	a.POST("/keys/:id/enable-signing", s.enableKeySigning)
 	a.GET("/apidocs", s.apiDocsPage)
 	a.GET("/openapi.json", s.openAPISpec)
 }

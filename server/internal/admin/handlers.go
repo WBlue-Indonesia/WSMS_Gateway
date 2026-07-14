@@ -184,14 +184,59 @@ func (s *Server) clientsPage(c *gin.Context) {
 	var clients []models.Client
 	s.db.Order("name").Find(&clients)
 	type row struct {
-		Client models.Client
-		Keys   []models.APIKey
+		Client        models.Client
+		Keys          []models.APIKey
+		WebhookSecret bool
 	}
 	rows := make([]row, 0, len(clients))
 	for _, cl := range clients {
 		var keys []models.APIKey
 		s.db.Where("client_id = ?", cl.ID).Find(&keys)
-		rows = append(rows, row{Client: cl, Keys: keys})
+		rows = append(rows, row{Client: cl, Keys: keys, WebhookSecret: len(cl.WebhookSecretEnc) > 0})
 	}
-	renderPage(c, "clients", gin.H{"Clients": rows})
+	renderPage(c, "clients", gin.H{"Clients": rows, "Reveal": c.Query("reveal"), "RevealKind": c.Query("kind")})
+}
+
+// rotateWebhookSecret generates a new webhook signing secret for a client, stores it
+// AES-GCM-encrypted, and reveals the plaintext once (docs/06 §1.8, F3-style).
+func (s *Server) rotateWebhookSecret(c *gin.Context) {
+	if r := s.role(c); r != "owner" && r != "operator" {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	plain, _ := secretToken()
+	enc, err := sealSecret(s.cfg.MasterKey[:], plain)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "seal failed")
+		return
+	}
+	if s.db.Model(&models.Client{}).Where("id = ?", c.Param("id")).
+		Update("webhook_secret_enc", enc).Error != nil {
+		c.String(http.StatusInternalServerError, "store failed")
+		return
+	}
+	s.audit(c, "webhook.secret.rotate", "client", c.Param("id"), "")
+	c.Redirect(http.StatusSeeOther, "/admin/clients?kind=webhook&reveal="+plain)
+}
+
+// enableKeySigning gives an API key a separate signing secret (encrypted at rest) so
+// inbound requests can be HMAC-verified (amendment F3). Revealed once.
+func (s *Server) enableKeySigning(c *gin.Context) {
+	if r := s.role(c); r != "owner" && r != "operator" {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	plain, _ := secretToken()
+	enc, err := sealSecret(s.cfg.MasterKey[:], plain)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "seal failed")
+		return
+	}
+	if s.db.Model(&models.APIKey{}).Where("id = ?", c.Param("id")).
+		Update("signing_secret_enc", enc).Error != nil {
+		c.String(http.StatusInternalServerError, "store failed")
+		return
+	}
+	s.audit(c, "apikey.signing.enable", "api_key", c.Param("id"), "")
+	c.Redirect(http.StatusSeeOther, "/admin/clients?kind=signing&reveal="+plain)
 }

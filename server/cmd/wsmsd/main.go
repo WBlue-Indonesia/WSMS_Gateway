@@ -15,8 +15,10 @@ import (
 	"github.com/nizwar/wsms-gateway/server/internal/api"
 	"github.com/nizwar/wsms-gateway/server/internal/config"
 	"github.com/nizwar/wsms-gateway/server/internal/dispatch"
+	"github.com/nizwar/wsms-gateway/server/internal/fcm"
 	"github.com/nizwar/wsms-gateway/server/internal/router"
 	"github.com/nizwar/wsms-gateway/server/internal/store"
+	"github.com/nizwar/wsms-gateway/server/internal/webhook"
 	"github.com/nizwar/wsms-gateway/server/internal/ws"
 )
 
@@ -43,12 +45,30 @@ func main() {
 		slog.Error("load prefixes failed", "err", err)
 		os.Exit(1)
 	}
+	if cfg.MasterKeyDev {
+		slog.Warn("WSMS_SECRET_KEY not set — using an insecure dev master key; set it in production (64 hex chars)")
+	}
+
 	engine := router.New(db, prefixes)
 	hub := ws.NewHub(db)
+
+	// FCM waker (optional): revives offline devices when work is waiting for them.
+	waker, err := fcm.New(cfg)
+	if err != nil {
+		slog.Error("fcm init failed", "err", err)
+	}
+	if waker != nil {
+		slog.Info("FCM wake enabled", "project", cfg.FCMProjectID)
+	}
+
 	disp := dispatch.New(db, engine, hub, cfg)
+	if waker != nil {
+		disp.SetWaker(waker)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go disp.Run(ctx)
+	go webhook.New(db, cfg).Run(ctx)
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,

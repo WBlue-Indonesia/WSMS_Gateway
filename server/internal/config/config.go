@@ -24,8 +24,12 @@ type Config struct {
 	MasterKey    [32]byte
 	MasterKeyDev bool // true when a derived dev key is used (no WSMS_SECRET_KEY set)
 
-	WebhookWorkers    int
+	WebhookWorkers     int
 	WebhookMaxAttempts int
+
+	// Per-client submit rate limit (protects the fleet from a runaway client).
+	RatePerSec float64
+	RateBurst  int
 
 	// FCM wake (optional): path to a Firebase service-account JSON + project id.
 	FCMCredentialsFile string
@@ -49,6 +53,8 @@ func Load() Config {
 		MinRemainingTTL:    envDur("WSMS_MIN_REMAINING_TTL", 30*time.Second),
 		WebhookWorkers:     envInt("WSMS_WEBHOOK_WORKERS", 2),
 		WebhookMaxAttempts: envInt("WSMS_WEBHOOK_MAX_ATTEMPTS", 6),
+		RatePerSec:         envFloat("WSMS_RATE_PER_SEC", 5),
+		RateBurst:          envInt("WSMS_RATE_BURST", 10),
 		FCMCredentialsFile: os.Getenv("WSMS_FCM_CREDENTIALS"),
 		FCMProjectID:       os.Getenv("WSMS_FCM_PROJECT_ID"),
 		PublicURL:          os.Getenv("WSMS_PUBLIC_URL"),
@@ -77,6 +83,15 @@ func deriveDevKey() [32]byte {
 func env(k, def string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
+	}
+	return def
+}
+
+func envFloat(k string, def float64) float64 {
+	if v := os.Getenv(k); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return f
+		}
 	}
 	return def
 }

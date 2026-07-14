@@ -7,9 +7,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/nizwar/wsms-gateway/server/internal/admin"
 	"github.com/nizwar/wsms-gateway/server/internal/config"
+	"github.com/nizwar/wsms-gateway/server/internal/metrics"
 	"github.com/nizwar/wsms-gateway/server/internal/models"
 	"github.com/nizwar/wsms-gateway/server/internal/router"
 	"github.com/nizwar/wsms-gateway/server/internal/ws"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gorm.io/gorm"
 )
 
@@ -19,10 +22,15 @@ type Server struct {
 	engine *router.Engine
 	cfg    config.Config
 	admin  *admin.Server
+	rl     *rateLimiter
 }
 
 func New(db *gorm.DB, hub *ws.Hub, engine *router.Engine, cfg config.Config) *Server {
-	return &Server{db: db, hub: hub, engine: engine, cfg: cfg, admin: admin.New(db, hub, cfg, engine)}
+	return &Server{
+		db: db, hub: hub, engine: engine, cfg: cfg,
+		admin: admin.New(db, hub, cfg, engine),
+		rl:    newRateLimiter(cfg.RatePerSec, cfg.RateBurst),
+	}
 }
 
 // Handler builds the gin engine with all routes.
@@ -34,6 +42,11 @@ func (s *Server) Handler() http.Handler {
 	r.GET("/healthz", s.healthz)
 	r.GET("/readyz", s.readyz)
 
+	// Prometheus metrics (internal; scrape target — docs/06 §3.4).
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(metrics.New(s.db, s.hub))
+	r.GET("/metrics", gin.WrapH(promhttp.HandlerFor(reg, promhttp.HandlerOpts{})))
+
 	// Admin console (server-rendered, mounted in this same binary under /admin).
 	if s.admin != nil {
 		s.admin.Mount(r)
@@ -42,7 +55,7 @@ func (s *Server) Handler() http.Handler {
 	v1 := r.Group("/v1")
 	{
 		// Client-facing (API-key auth).
-		v1.POST("/messages", s.clientAuth("messages:write"), s.submitMessage)
+		v1.POST("/messages", s.clientAuth("messages:write"), s.rl.middleware(), s.submitMessage)
 		v1.GET("/messages/:id", s.clientAuth("messages:read"), s.getMessage)
 		v1.GET("/messages", s.clientAuth("messages:read"), s.listMessages)
 		v1.POST("/messages/:id/cancel", s.clientAuth("messages:write"), s.cancelMessage)

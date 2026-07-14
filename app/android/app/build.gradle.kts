@@ -57,6 +57,18 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // R8 previously renamed the flutter_foreground_task Service, so Android could
+            // not start the foreground service (ActivityManager: "Unable to start service
+            // ... not found") — the app then died in the background and stopped sending.
+            // This is an owned-fleet app where APK size is irrelevant, so keep R8 off for
+            // a bulletproof foreground service. proguard-rules.pro is wired anyway so the
+            // build stays safe if minification is ever re-enabled.
+            isMinifyEnabled = false
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
@@ -65,6 +77,16 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
+}
+
+dependencies {
+    // OkHttp for the device REST calls (register token, ack, delivery, quota).
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.core:core-ktx:1.13.1")
+    // Native FCM: the push-driven transport. A high-priority data message wakes the app
+    // (even frozen) and delivers the send command to FcmService.
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
 }
 
 flutter {

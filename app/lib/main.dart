@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 
+import 'src/device_bridge.dart';
 import 'src/enroll_screen.dart';
-import 'src/foreground.dart';
 import 'src/home_screen.dart';
-import 'src/push.dart';
-import 'src/storage.dart';
 import 'src/theme.dart';
 import 'src/theme_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  ForegroundService.init();
-  await Push.init(); // best-effort; no-op without a Firebase project
   await loadThemeMode();
   runApp(const WsmsApp());
 }
@@ -43,7 +39,6 @@ class _Root extends StatefulWidget {
 }
 
 class _RootState extends State<_Root> {
-  final _storage = Storage();
   bool? _enrolled;
 
   @override
@@ -53,7 +48,8 @@ class _RootState extends State<_Root> {
   }
 
   Future<void> _refresh() async {
-    final ok = await _storage.isEnrolled;
+    final ok = await DeviceBridge.isEnrolled();
+    if (ok) await DeviceBridge.registerFcm(); // refresh the FCM token + report SIMs
     if (mounted) setState(() => _enrolled = ok);
   }
 
@@ -63,8 +59,8 @@ class _RootState extends State<_Root> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (_enrolled == false) {
-      return EnrollScreen(storage: _storage, onEnrolled: _refresh);
+      return EnrollScreen(onEnrolled: _refresh);
     }
-    return HomeScreen(storage: _storage, onUnenrolled: _refresh);
+    return HomeScreen(onUnenrolled: _refresh);
   }
 }

@@ -1,47 +1,52 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'activity.dart';
-import 'foreground.dart';
-import 'gateway.dart';
+import 'device_bridge.dart';
 import 'sim_state.dart';
-import 'storage.dart';
-import 'telephony.dart';
 import 'theme.dart';
 import 'theme_controller.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.storage, required this.onUnenrolled});
+  const HomeScreen({super.key, required this.onUnenrolled});
 
-  final Storage storage;
   final VoidCallback onUnenrolled;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  late final Gateway _gateway;
-  List<SimInfo> _sims = [];
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  final _state = ValueNotifier<DeviceState>(DeviceState.empty());
   int _tab = 0;
+  Timer? _poll;
 
   @override
   void initState() {
     super.initState();
-    _gateway = Gateway(widget.storage, Telephony());
-    _gateway.start();
-    ForegroundService.start(); // keep the process alive in the background (best-effort)
-    _loadSims();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+    _poll = Timer.periodic(const Duration(seconds: 2), (_) => _refresh());
   }
 
   @override
   void dispose() {
-    _gateway.stop();
+    _poll?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _state.dispose();
     super.dispose();
   }
 
-  Future<void> _loadSims() async {
-    final sims = await Telephony().listSims();
-    if (mounted) setState(() => _sims = sims);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    try {
+      _state.value = await DeviceBridge.getState();
+    } catch (_) {}
   }
 
   @override
@@ -66,8 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<String>(
             onSelected: (v) async {
               if (v == 'rescan') {
-                await _gateway.reportSims();
-                await _loadSims();
+                await DeviceBridge.reportSims();
+                await Future.delayed(const Duration(seconds: 1));
+                _refresh();
               } else if (v == 'unpair') {
                 _confirmUnpair();
               }
@@ -80,9 +86,12 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
-        child: IndexedStack(
-          index: _tab,
-          children: [_statusTab(), _activityTab()],
+        child: ValueListenableBuilder<DeviceState>(
+          valueListenable: _state,
+          builder: (_, st, _) => IndexedStack(
+            index: _tab,
+            children: [_statusTab(st), _activityTab(st)],
+          ),
         ),
       ),
       bottomNavigationBar: NavigationBar(
@@ -98,91 +107,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---- Status tab ----------------------------------------------------------
 
-  Widget _statusTab() {
+  Widget _statusTab(DeviceState st) {
+    final ready = st.sims.where((s) => s.status.toUpperCase() == 'READY').length;
     return RefreshIndicator(
       onRefresh: () async {
-        await _gateway.reportSims();
-        await _loadSims();
+        await DeviceBridge.reportSims();
+        await Future.delayed(const Duration(seconds: 1));
+        await _refresh();
       },
       child: ListView(
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
         children: [
-          _connectionHero(),
+          _pushCard(ready),
           const SizedBox(height: 18),
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text('SIM cards', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
           ),
-          ValueListenableBuilder<List<SimState>>(
-            valueListenable: _gateway.simStates,
-            builder: (_, states, _) {
-              if (states.isNotEmpty) {
-                return Column(children: states.map(_simStateCard).toList());
-              }
-              // Not yet connected — show what the OS reports, without quota controls.
-              if (_sims.isEmpty) {
-                return _emptyCard('No SIMs detected', 'Grant phone permission, then pull to refresh.');
-              }
-              return Column(children: [
-                for (final s in _sims) _basicSimCard(s),
-                const SizedBox(height: 6),
-                Text('Connect to the server to view and adjust quota.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: StatusColors.muted(context))),
-              ]);
-            },
-          ),
+          if (st.sims.isEmpty)
+            _emptyCard('No SIMs reported yet', 'Pull to refresh — the phone reports SIMs to the server.')
+          else
+            ...st.sims.map(_simStateCard),
         ],
       ),
     );
   }
 
-  Widget _connectionHero() {
-    return ValueListenableBuilder<ConnState>(
-      valueListenable: _gateway.state,
-      builder: (_, s, _) {
-        final (label, sub, icon, color) = switch (s) {
-          ConnState.connected => ('Online', 'Listening for send commands', Icons.cloud_done, StatusColors.ok(context)),
-          ConnState.connecting => ('Connecting…', 'Reaching the gateway', Icons.cloud_sync, StatusColors.warn(context)),
-          ConnState.disconnected => ('Offline', 'Will retry automatically', Icons.cloud_off, StatusColors.bad(context)),
-        };
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 52, height: 52,
-                  decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(15)),
-                  child: Icon(icon, color: color, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(label, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: color)),
-                      const SizedBox(height: 2),
-                      Text(sub, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: StatusColors.muted(context))),
-                    ],
-                  ),
-                ),
-                _pulse(color, s == ConnState.connected),
-              ],
+  Widget _pushCard(int ready) {
+    final ok = StatusColors.ok(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(color: ok.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(15)),
+              child: Icon(Icons.bolt, color: ok, size: 28),
             ),
-          ),
-        );
-      },
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Ready · push-driven', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: ok)),
+                  const SizedBox(height: 2),
+                  Text('The server pushes each SMS via FCM — no need to keep the app open. $ready SIM(s) ready.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: StatusColors.muted(context))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-
-  Widget _pulse(Color color, bool on) => Container(
-        width: 12, height: 12,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: on ? color : color.withValues(alpha: 0.4),
-          boxShadow: on ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 8, spreadRadius: 1)] : null,
-        ),
-      );
 
   Widget _simStateCard(SimState s) {
     final color = StatusColors.forStatus(context, s.status);
@@ -244,31 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
                 ),
               ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _basicSimCard(SimInfo s) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _slotBadge(s.slot),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(s.carrierName.isEmpty ? 'SIM ${s.slot}' : s.carrierName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                  Text('sub ${s.subscriptionId}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: StatusColors.muted(context))),
-                ],
-              ),
             ),
           ],
         ),
@@ -360,12 +314,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 18),
               FilledButton.icon(
-                onPressed: () {
-                  _gateway.setQuota(s.subscriptionId, value);
-                  Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Quota set to $value/day for ${s.operator}'), behavior: SnackBarBehavior.floating),
-                  );
+                onPressed: () async {
+                  await DeviceBridge.setQuota(s.subscriptionId, value);
+                  if (ctx.mounted) Navigator.of(ctx).pop();
+                  await Future.delayed(const Duration(milliseconds: 800));
+                  _refresh();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Quota set to $value/day for ${s.operator}'), behavior: SnackBarBehavior.floating),
+                    );
+                  }
                 },
                 icon: const Icon(Icons.check),
                 label: const Text('Apply quota'),
@@ -379,21 +337,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---- Activity tab --------------------------------------------------------
 
-  Widget _activityTab() {
-    return ValueListenableBuilder<List<ActivityEvent>>(
-      valueListenable: _gateway.activity,
-      builder: (_, events, _) {
-        if (events.isEmpty) {
-          return _emptyCentered(Icons.receipt_long_outlined, 'No activity yet', 'Sends and delivery reports will appear here.');
-        }
-        final reversed = events.reversed.toList();
-        return ListView.separated(
-          padding: const EdgeInsets.all(14),
-          itemCount: reversed.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 8),
-          itemBuilder: (_, i) => _activityTile(reversed[i]),
-        );
-      },
+  Widget _activityTab(DeviceState st) {
+    if (st.activity.isEmpty) {
+      return _emptyCentered(Icons.receipt_long_outlined, 'No activity yet', 'Sends and delivery reports will appear here.');
+    }
+    final reversed = st.activity.reversed.toList();
+    return ListView.separated(
+      padding: const EdgeInsets.all(14),
+      itemCount: reversed.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _activityTile(reversed[i]),
     );
   }
 
@@ -403,7 +356,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 38, height: 38,
@@ -483,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Unpair this device?'),
-        content: const Text('The phone will stop sending and disconnect. You will need a new enrollment token to pair again.'),
+        content: const Text('The phone will stop receiving send commands. You will need a new enrollment token to pair again.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
@@ -495,9 +447,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (ok != true) return;
-    await _gateway.stop();
-    await ForegroundService.stop();
-    await widget.storage.clear();
+    await DeviceBridge.unpair();
     widget.onUnenrolled();
   }
 

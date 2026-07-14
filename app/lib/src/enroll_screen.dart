@@ -3,16 +3,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'device_bridge.dart';
 import 'permissions.dart';
 import 'scan_screen.dart';
-import 'storage.dart';
-import 'telephony.dart';
 import 'theme.dart';
 
 class EnrollScreen extends StatefulWidget {
-  const EnrollScreen({super.key, required this.storage, required this.onEnrolled});
+  const EnrollScreen({super.key, required this.onEnrolled});
 
-  final Storage storage;
   final VoidCallback onEnrolled;
 
   @override
@@ -20,10 +18,9 @@ class EnrollScreen extends StatefulWidget {
 }
 
 class _EnrollScreenState extends State<EnrollScreen> {
-  final _url = TextEditingController(text: 'http://10.0.2.2:8080');
+  final _url = TextEditingController(text: 'https://sms.wblue.id');
   final _token = TextEditingController();
   final _name = TextEditingController(text: 'HP-A');
-  final _telephony = Telephony();
   bool _busy = false;
   String? _error;
 
@@ -151,7 +148,6 @@ class _EnrollScreenState extends State<EnrollScreen> {
       }
       await requestIgnoreBatteryOptimizations();
 
-      final sims = await _telephony.listSims();
       final url = _url.text.trim();
       final resp = await http.post(
         Uri.parse('$url/v1/device/enroll'),
@@ -160,18 +156,18 @@ class _EnrollScreenState extends State<EnrollScreen> {
           'token': _token.text.trim(),
           'name': _name.text.trim(),
           'os': 'android',
-          'model': 'unknown',
-          'sims': sims.map((s) => s.toReportJson()).toList(),
+          'model': 'android',
         }),
       );
       if (resp.statusCode != 200) {
         throw 'enroll failed (${resp.statusCode}): ${resp.body}';
       }
       final body = jsonDecode(resp.body) as Map<String, dynamic>;
-      await widget.storage.saveEnrollment(
-        serverUrl: url,
-        deviceId: body['device_id'] as String,
-        deviceSecret: body['device_secret'] as String,
+      // Hand credentials to the native side — it registers the FCM token + reports SIMs.
+      await DeviceBridge.saveCredsAndRegister(
+        url,
+        body['device_id'] as String,
+        body['device_secret'] as String,
       );
       widget.onEnrolled();
     } catch (e) {

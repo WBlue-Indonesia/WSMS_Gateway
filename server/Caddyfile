@@ -1,0 +1,14 @@
+# Caddy terminates TLS and reverse-proxies to the gateway. reverse_proxy passes
+# through the WebSocket Upgrade automatically, so wss://<domain>/v1/device/ws works.
+#
+# Set WSMS_DOMAIN in .env:
+#   - a real hostname (e.g. sms.wblue.id) → Caddy gets a Let's Encrypt cert automatically
+#   - :80 → plain HTTP for local testing
+{$WSMS_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy server:8080
+
+	# Keep /metrics internal — do not expose it publicly.
+	@metrics path /metrics
+	respond @metrics 404
+}

@@ -38,6 +38,24 @@ On first start it prints three **bootstrap credentials** (once) to the logs:
 - a device enrollment token — for pairing the first phone
 - the `admin` console login (username `admin` + a random password)
 
+## Deploy (production, Docker)
+
+`docker-compose.yml` runs Postgres + the gateway + **Caddy** (TLS termination +
+WebSocket proxy). Caddy passes the `Upgrade` through, so `wss://<domain>/v1/device/ws`
+works, and it auto-provisions a Let's Encrypt cert when `WSMS_DOMAIN` is a real host.
+
+```bash
+cp .env.example .env                 # set POSTGRES_PASSWORD, WSMS_SECRET_KEY (openssl rand -hex 32),
+                                     #     WSMS_DOMAIN=sms.example.id, WSMS_PUBLIC_URL=https://sms.example.id
+mkdir -p secrets && cp <firebase-service-account>.json secrets/fcm.json   # for FCM wake (optional)
+# in .env: WSMS_FCM_CREDENTIALS=/secrets/fcm.json
+docker compose up -d --build
+```
+
+`.env` and `secrets/` are gitignored. `/metrics` is blocked at the Caddy edge —
+scrape it from inside the network. Set `WSMS_PUBLIC_URL` to the public HTTPS URL so
+the pairing QR embeds a reachable address.
+
 ## Admin console
 
 Open **`http://localhost:8080/admin`** and log in with the bootstrap credentials.

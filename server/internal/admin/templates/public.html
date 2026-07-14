@@ -29,7 +29,9 @@
 
     .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 30px 0; }
     .info { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
-    .info h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+    .info h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 9px; }
+    .info h2 svg { width: 20px; height: 20px; flex: none; color: var(--accent2);
+      padding: 4px; border-radius: 8px; background: var(--accent-soft); box-sizing: content-box; }
     .info .id { font-size: 14px; margin: 0 0 4px; }
     .info .en { font-size: 13px; color: var(--muted); margin: 0; }
     .info ul { margin: 8px 0 0; padding-left: 18px; }
@@ -82,12 +84,12 @@
 
   <div class="grid2">
     <div class="info">
-      <h2>ℹ️ Apa ini? / What is this?</h2>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Apa ini? / What is this?</h2>
       <p class="id">Gateway SMS internal WBlue. Bukan layanan SMS massal untuk umum — dibuat untuk pengiriman volume rendah, opt-in, dari SIM milik sendiri.</p>
       <p lang="en" class="en">WBlue's internal SMS gateway. Not a public bulk-SMS service — built for low-volume, opt-in sending from our own SIMs.</p>
     </div>
     <div class="info">
-      <h2>👥 Untuk siapa? / Who is it for?</h2>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Untuk siapa? / Who is it for?</h2>
       <ul>
         <li>Tim internal WBlue <span lang="en" class="en">WBlue internal teams</span></li>
         <li>Klien / aplikasi terdaftar via API key <span lang="en" class="en">Registered clients / apps via API key</span></li>
@@ -95,7 +97,7 @@
       </ul>
     </div>
     <div class="info">
-      <h2>🔌 Cara akses / How to access</h2>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Cara akses / How to access</h2>
       <ul>
         <li>Operator & admin → panel <a href="/admin">/admin</a></li>
         <li>Integrasi API → minta API key ke admin <span lang="en" class="en">Integrations → request an API key from an admin</span></li>
@@ -103,7 +105,7 @@
       </ul>
     </div>
     <div class="info">
-      <h2>🔒 Keamanan / Security</h2>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Keamanan / Security</h2>
       <p class="id">Setiap panggilan API pakai bearer key (disimpan ter-hash), webhook & request ditandatangani HMAC, akses panel berbasis peran dan diaudit.</p>
       <p lang="en" class="en">Every API call uses a hashed bearer key; webhooks and requests are HMAC-signed; console access is role-based and audited.</p>
     </div>

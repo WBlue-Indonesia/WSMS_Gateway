@@ -5,11 +5,14 @@ import 'src/foreground.dart';
 import 'src/home_screen.dart';
 import 'src/push.dart';
 import 'src/storage.dart';
+import 'src/theme.dart';
+import 'src/theme_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   ForegroundService.init();
   await Push.init(); // best-effort; no-op without a Firebase project
+  await loadThemeMode();
   runApp(const WsmsApp());
 }
 
@@ -18,10 +21,16 @@ class WsmsApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'WSMS Sender',
-      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
-      home: const _Root(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (_, mode, _) => MaterialApp(
+        title: 'WSMS Sender',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: mode,
+        home: const _Root(),
+      ),
     );
   }
 }

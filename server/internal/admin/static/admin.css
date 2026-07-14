@@ -88,8 +88,8 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: v
 /* ---- Brand / logo ----------------------------------------------------- */
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; padding: 2px 20px 20px; color: var(--fg); }
 .brand .logo { width: 26px; height: 26px; flex: none; display: block; }
-.brand b { font-weight: 800; }
-.brand span { color: var(--accent2); font-weight: 700; }
+.brand .wm { font-weight: 700; white-space: nowrap; } /* one unit → normal spacing, not flex gaps */
+.brand .hl { color: var(--accent2); }
 
 /* ---- App shell -------------------------------------------------------- */
 .shell { display: flex; min-height: 100vh; min-height: 100dvh; }

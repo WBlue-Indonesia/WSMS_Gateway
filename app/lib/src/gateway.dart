@@ -4,8 +4,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/io.dart';
 
+import 'activity.dart';
 import 'config.dart';
 import 'push.dart';
+import 'sim_state.dart';
 import 'storage.dart';
 import 'telephony.dart';
 
@@ -27,7 +29,12 @@ class Gateway {
   final Telephony _telephony;
 
   final state = ValueNotifier<ConnState>(ConnState.disconnected);
-  final log = ValueNotifier<List<String>>([]);
+
+  /// Rich activity feed (replaces the old plain string log).
+  final activity = ValueNotifier<List<ActivityEvent>>([]);
+
+  /// Authoritative per-SIM state pushed by the server (operator/status/quota/sent).
+  final simStates = ValueNotifier<List<SimState>>([]);
 
   IOWebSocketChannel? _channel;
   StreamSubscription? _telephonySub;
@@ -59,7 +66,7 @@ class Gateway {
     final id = await _storage.deviceId;
     final secret = await _storage.deviceSecret;
     if (url == null || id == null || secret == null) {
-      _appendLog('not enrolled');
+      _event(ActivityKind.info, 'Not enrolled');
       return;
     }
     state.value = ConnState.connecting;
@@ -79,12 +86,12 @@ class Gateway {
       );
       state.value = ConnState.connected;
       _backoffSecs = 1;
-      _appendLog('connected to $wsUrl');
+      _event(ActivityKind.connect, 'Connected', subtitle: wsUrl);
       await _sendHello();
       await reportSims();
       _startHeartbeat();
     } catch (e) {
-      _appendLog('connect failed: $e');
+      _event(ActivityKind.failed, 'Connect failed', subtitle: '$e');
       _onClosed();
     }
   }
@@ -93,7 +100,7 @@ class Gateway {
     _heartbeat?.cancel();
     state.value = ConnState.disconnected;
     if (_stopped) return;
-    _appendLog('disconnected, retrying in ${_backoffSecs}s');
+    _event(ActivityKind.disconnect, 'Disconnected', subtitle: 'retrying in ${_backoffSecs}s');
     _reconnect?.cancel();
     _reconnect = Timer(Duration(seconds: _backoffSecs), _connect);
     _backoffSecs = (_backoffSecs * 2).clamp(1, 30);
@@ -119,7 +126,7 @@ class Gateway {
   Future<void> reportSims() async {
     final sims = await _telephony.listSims();
     _send(FrameType.simReport, {'sims': sims.map((s) => s.toReportJson()).toList()});
-    _appendLog('reported ${sims.length} SIM(s)');
+    _event(ActivityKind.sim, 'Reported ${sims.length} SIM(s)');
   }
 
   void _onData(dynamic raw) {
@@ -143,6 +150,9 @@ class Gateway {
         break;
       case FrameType.config:
         if (data['action'] == 'report_sims') reportSims();
+        break;
+      case FrameType.simState:
+        _onSimState(data);
         break;
     }
   }
@@ -178,10 +188,10 @@ class Gateway {
     if (res.accepted) {
       await _storage.setLedgerPhase(messageId, 'sent'); // commit AFTER acceptance (F5)
       _sendAck(messageId, AckResult.accepted, null);
-      _appendLog('sending $messageId -> $target (sub $subId, ${res.parts} part)');
+      _event(ActivityKind.send, 'Sending → $target', subtitle: 'sub $subId · ${res.parts} part(s)');
     } else {
       _sendAck(messageId, AckResult.rejected, res.error ?? 'not accepted by radio');
-      _appendLog('rejected $messageId: ${res.error}');
+      _event(ActivityKind.rejected, 'Rejected', subtitle: res.error ?? 'radio refused');
     }
   }
 
@@ -201,14 +211,16 @@ class Gateway {
     switch (e.phase) {
       case 'sent':
         _sendDelivery(e.messageId, DeliveryStatus.sent);
+        _event(ActivityKind.sent, 'Left the radio', subtitle: _shortId(e.messageId));
         break;
       case 'delivered':
         _storage.setLedgerPhase(e.messageId, 'delivered');
         _sendDelivery(e.messageId, DeliveryStatus.delivered);
+        _event(ActivityKind.delivered, 'Delivered', subtitle: _shortId(e.messageId));
         break;
       case 'failed':
         _sendDelivery(e.messageId, DeliveryStatus.failed, e.reason);
-        _appendLog('delivery failed ${e.messageId}: ${e.reason}');
+        _event(ActivityKind.failed, 'Delivery failed', subtitle: e.reason);
         break;
     }
   }
@@ -239,9 +251,22 @@ class Gateway {
     return httpUrl;
   }
 
-  void _appendLog(String line) {
-    final ts = DateTime.now().toIso8601String().substring(11, 19);
-    final next = [...log.value, '$ts  $line'];
-    log.value = next.length > 200 ? next.sublist(next.length - 200) : next;
+  void _event(ActivityKind kind, String title, {String? subtitle}) {
+    final next = [...activity.value, ActivityEvent(kind, title, subtitle: subtitle)];
+    activity.value = next.length > 200 ? next.sublist(next.length - 200) : next;
   }
+
+  void _onSimState(Map<String, dynamic> d) {
+    final list = (d['sims'] as List?) ?? const [];
+    simStates.value = list.map((e) => SimState.fromMap(e as Map)).toList();
+  }
+
+  /// Requests a daily-quota change for a SIM (by local subscription id). The server
+  /// clamps the value and echoes the authoritative state back via a sim_state frame.
+  void setQuota(int subscriptionId, int dailyQuota) {
+    _send(FrameType.setQuota, {'subscription_id': subscriptionId, 'daily_quota': dailyQuota});
+    _event(ActivityKind.sim, 'Quota set → $dailyQuota/day', subtitle: 'sub $subscriptionId');
+  }
+
+  static String _shortId(String id) => id.length > 8 ? id.substring(0, 8) : id;
 }

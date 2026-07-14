@@ -25,7 +25,7 @@
   <label for="nav-toggle" class="nav-scrim" aria-hidden="true"></label>
 
   <aside class="sidebar">
-    <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt=""><span>W</span><b>SMS</b>&nbsp;Gateway</div>
+    <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt=""><span class="wm"><span class="hl">W</span>SMS Gateway</span></div>
     <nav>
       <a href="/admin" class="{{if eq $page "overview"}}active{{end}}">{{template "ic_overview"}}<span>Overview</span></a>
       <a href="/admin/messages" class="{{if eq $page "messages"}}active{{end}}">{{template "ic_messages"}}<span>Messages</span></a>
@@ -47,7 +47,7 @@
 
   <div class="main-col">
     <header class="topbar">
-      <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt=""><span>W</span><b>SMS</b></div>
+      <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt=""><span class="wm"><span class="hl">W</span>SMS</span></div>
       <div class="spacer"></div>
       <button type="button" class="theme-toggle" onclick="wsmsTheme()" aria-label="Toggle theme">{{template "ic_theme"}}</button>
     </header>

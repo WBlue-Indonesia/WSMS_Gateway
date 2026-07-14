@@ -7,6 +7,7 @@ import 'permissions.dart';
 import 'scan_screen.dart';
 import 'storage.dart';
 import 'telephony.dart';
+import 'theme.dart';
 
 class EnrollScreen extends StatefulWidget {
   const EnrollScreen({super.key, required this.storage, required this.onEnrolled});
@@ -28,35 +29,90 @@ class _EnrollScreenState extends State<EnrollScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Pair device')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 32, 20, 24),
           children: [
-            const Text('Scan the pairing QR on the admin Enrollment page — or enter the details manually.'),
-            const SizedBox(height: 16),
+            // Brand header
+            Row(
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(color: AppTheme.brandNavy, borderRadius: BorderRadius.circular(12)),
+                  alignment: Alignment.center,
+                  child: const Text('W', style: TextStyle(color: AppTheme.brandCyan, fontWeight: FontWeight.w900, fontSize: 24, height: 1)),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('WSMS Sender', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    Text('Pair this phone with your gateway',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+
             FilledButton.icon(
               onPressed: _busy ? null : _scanAndPair,
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Scan QR to pair'),
+              label: const Text('Scan pairing QR'),
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: 20),
               child: Row(children: [
                 Expanded(child: Divider()),
-                Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('or manually')),
+                Padding(padding: EdgeInsets.symmetric(horizontal: 12), child: Text('or enter manually')),
                 Expanded(child: Divider()),
               ]),
             ),
-            TextField(controller: _url, decoration: const InputDecoration(labelText: 'Server URL')),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Device name')),
-            TextField(controller: _token, decoration: const InputDecoration(labelText: 'Enrollment token')),
-            const SizedBox(height: 16),
-            if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-            FilledButton(
+
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    TextField(controller: _url, keyboardType: TextInputType.url,
+                        decoration: const InputDecoration(labelText: 'Server URL', prefixIcon: Icon(Icons.dns_outlined))),
+                    const SizedBox(height: 12),
+                    TextField(controller: _name,
+                        decoration: const InputDecoration(labelText: 'Device name', prefixIcon: Icon(Icons.smartphone_outlined))),
+                    const SizedBox(height: 12),
+                    TextField(controller: _token,
+                        decoration: const InputDecoration(labelText: 'Enrollment token', prefixIcon: Icon(Icons.vpn_key_outlined))),
+                  ],
+                ),
+              ),
+            ),
+
+            if (_error != null)
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: scheme.onErrorContainer, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(_error!, style: TextStyle(color: scheme.onErrorContainer))),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+            FilledButton.icon(
               onPressed: _busy ? null : _enroll,
-              child: _busy ? const CircularProgressIndicator() : const Text('Pair'),
+              icon: _busy
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.link),
+              label: Text(_busy ? 'Pairing…' : 'Pair device'),
             ),
           ],
         ),

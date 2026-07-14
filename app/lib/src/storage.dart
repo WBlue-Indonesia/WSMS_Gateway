@@ -9,6 +9,11 @@ class Storage {
   static const _kDeviceId = 'device_id';
   static const _kDeviceSecret = 'device_secret';
   static const _kLedger = 'send_ledger';
+  static const _kThemeMode = 'theme_mode';
+
+  // ---- Theme preference: 'system' | 'light' | 'dark' ----
+  Future<String?> get themeMode => _storage.read(key: _kThemeMode);
+  Future<void> setThemeMode(String mode) => _storage.write(key: _kThemeMode, value: mode);
 
   Future<bool> get isEnrolled async =>
       (await deviceId) != null && (await deviceSecret) != null;

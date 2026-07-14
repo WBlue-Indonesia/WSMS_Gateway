@@ -13,11 +13,13 @@ class FrameType {
   static const sendAck = 'send_ack';
   static const deliveryReport = 'delivery_report';
   static const cancelAck = 'cancel_ack';
+  static const setQuota = 'set_quota'; // adjust a SIM's daily quota (segments/day)
   // server -> device
   static const sendCommand = 'send_command';
   static const cancel = 'cancel';
   static const config = 'config';
   static const ping = 'ping';
+  static const simState = 'sim_state'; // authoritative per-SIM state (quota, sent, status)
 }
 
 class AckResult {

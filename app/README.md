@@ -58,6 +58,22 @@ flutter pub get
 flutter run          # on a real dual-SIM Android phone (emulators can't send SMS)
 ```
 
+## Release build (signed APK)
+
+Release signing reads `android/key.properties` (gitignored). To sign your own
+fleet APK, create a keystore + that file (a `key.properties.example` is provided):
+
+```bash
+keytool -genkeypair -keystore android/keystore/release.jks -alias wsms \
+  -keyalg RSA -keysize 2048 -validity 10000
+cp android/key.properties.example android/key.properties   # fill in the passwords
+flutter build apk --release
+```
+
+If `key.properties` is absent the build falls back to debug signing so `flutter
+run` still works. Keep the keystore + `key.properties` secret and back them up —
+you need the same key to ship app updates.
+
 Pair: enter the server URL (use `http://10.0.2.2:8080` from an emulator) and a
 device enrollment token from the admin, grant SMS + phone permissions.
 

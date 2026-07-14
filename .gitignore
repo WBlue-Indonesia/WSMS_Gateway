@@ -13,3 +13,8 @@ server/secrets/
 *firebase*sa*.json
 .dbpass.txt
 BOOTSTRAP_CREDENTIALS.txt
+
+# Android release signing (never commit)
+*.jks
+*.keystore
+key.properties

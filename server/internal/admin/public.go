@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nizwar/wsms-gateway/server/internal/i18n"
 )
 
 // PublicHome serves the unauthenticated landing page mounted at "/" (e.g.
@@ -14,7 +15,7 @@ import (
 func (s *Server) PublicHome(c *gin.Context) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	c.Status(http.StatusOK)
-	if err := publicTmpl.Execute(c.Writer, gin.H{"AssetVer": assetVer}); err != nil {
+	if err := publicTmpl.Execute(c.Writer, gin.H{"AssetVer": assetVer, "Lang": i18n.Resolve(c.Request)}); err != nil {
 		c.String(http.StatusInternalServerError, "render error")
 	}
 }

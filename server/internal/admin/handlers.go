@@ -269,35 +269,52 @@ func (s *Server) unmaskMSISDN(c *gin.Context) {
 
 // ---- Fleet ----
 
-func (s *Server) fleet(c *gin.Context) {
+// deviceView is a device plus its SIMs and a distinct-operator summary, shared by the
+// fleet list and the per-device detail fragment.
+type deviceView struct {
+	D      models.Device
+	Online bool
+	Sims   []models.Sim
+	Ops    []models.Operator // distinct operators among its SIMs (for the summary line)
+}
+
+// deviceViews builds the fleet view. id=="" loads all devices; otherwise just that one.
+func (s *Server) deviceViews(id string) []deviceView {
 	var devices []models.Device
-	s.db.Order("name").Find(&devices)
-	type deviceView struct {
-		D      models.Device
-		Online bool
-		Sims   []models.Sim
+	q := s.db.Order("name")
+	if id != "" {
+		q = q.Where("id = ?", id)
 	}
+	q.Find(&devices)
 	views := make([]deviceView, 0, len(devices))
 	for _, d := range devices {
 		var sims []models.Sim
 		s.db.Where("device_id = ?", d.ID).Order("slot").Find(&sims)
-		views = append(views, deviceView{D: d, Online: s.hub.Online(d.ID), Sims: sims})
+		ops := make([]models.Operator, 0, len(sims))
+		seen := map[models.Operator]bool{}
+		for _, sm := range sims {
+			if sm.Operator != "" && !seen[sm.Operator] {
+				seen[sm.Operator] = true
+				ops = append(ops, sm.Operator)
+			}
+		}
+		views = append(views, deviceView{D: d, Online: s.hub.Online(d.ID), Sims: sims, Ops: ops})
 	}
-	fbMode, fbOp := s.engine.Fallback()
-	// operators we actually own a READY SIM for — guides the default-operator choice.
-	var owned []models.Operator
-	s.db.Model(&models.Sim{}).
-		Where("deleted_at IS NULL AND status = ?", models.SimReady).
-		Distinct().Order("operator").Pluck("operator", &owned)
-	renderPage(c, "fleet", gin.H{
-		"Devices":   views,
-		"CanMutate": s.canMutate(c),
-		"Routing": gin.H{
-			"Mode":     string(fbMode),
-			"Operator": string(fbOp),
-			"Owned":    owned,
-		},
-	})
+	return views
+}
+
+func (s *Server) fleet(c *gin.Context) {
+	renderPage(c, "fleet", gin.H{"Devices": s.deviceViews(""), "CanMutate": s.canMutate(c)})
+}
+
+// fleetDetail renders one device's SIMs and controls into the drawer / bottom-sheet.
+func (s *Server) fleetDetail(c *gin.Context) {
+	views := s.deviceViews(c.Param("id"))
+	if len(views) == 0 {
+		c.String(http.StatusNotFound, "device not found")
+		return
+	}
+	renderFragment(c, "fleet_detail", gin.H{"Dev": views[0], "CanMutate": s.canMutate(c)})
 }
 
 // ---- Enrollment ----

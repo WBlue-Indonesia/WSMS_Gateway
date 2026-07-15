@@ -1,116 +1,31 @@
 {{define "content"}}
-<h1>Fleet</h1>
-<p class="muted">Devices and their SIMs · quota is segments/day · deleting a device unlinks the phone immediately</p>
-
-{{if .CanMutate}}
-<div class="card routing-card">
-  <div class="device-head">
-    <div>
-      <strong>Default SIM routing</strong>
-      <span class="muted">how a SIM is picked when the recipient's operator isn't one you own — or the on-net SIM is out of quota</span>
-    </div>
-  </div>
-  <form method="post" action="/admin/settings/routing" class="routing-form">
-    <label>Fallback
-      <select name="mode" aria-label="Fallback mode">
-        <option value="LEAST_LOADED" {{if eq .Routing.Mode "LEAST_LOADED"}}selected{{end}}>Least loaded — spread evenly</option>
-        <option value="DEFAULT_OP" {{if eq .Routing.Mode "DEFAULT_OP"}}selected{{end}}>Default operator</option>
-        <option value="RANDOM" {{if eq .Routing.Mode "RANDOM"}}selected{{end}}>Random</option>
-      </select>
-    </label>
-    <label class="op-field">Operator
-      <select name="operator" aria-label="Default operator">
-        {{range list "TELKOMSEL" "INDOSAT" "XL" "AXIS" "TRI" "SMARTFREN"}}
-          <option value="{{.}}" {{if eq . $.Routing.Operator}}selected{{end}}>{{.}}</option>
-        {{end}}
-      </select>
-    </label>
-    <button type="submit">Save</button>
-  </form>
-  <p class="muted routing-hint">
-    {{if .Routing.Owned}}You own READY SIMs on: <strong>{{range $i, $o := .Routing.Owned}}{{if $i}}, {{end}}{{$o}}{{end}}</strong>. {{end}}
-    <em>Least loaded</em> spreads across every SIM · <em>Default operator</em> forces off-net numbers onto the chosen network (then any SIM if it's out of quota) · <em>Random</em> picks a SIM at random.
-  </p>
+<div class="page-head">
+  <div><h1>{{t .Lang "nav.fleet"}}</h1><p class="muted">{{t .Lang "fleet.sub"}}</p></div>
 </div>
-<script>
-(function () {
-  var f = document.querySelector('.routing-form');
-  if (!f) return;
-  var mode = f.querySelector('[name=mode]');
-  var opField = f.querySelector('.op-field');
-  function sync() { opField.style.display = (mode.value === 'DEFAULT_OP') ? '' : 'none'; }
-  mode.addEventListener('change', sync);
-  sync();
-})();
-</script>
-{{end}}
 
-{{range .Devices}}
-<div class="card device">
-  <div class="device-head">
-    <div>
-      <strong>{{.D.Name}}</strong>
-      <span class="mono muted">{{shortID .D.ID}}</span>
-      {{if .Online}}<span class="pill ok">online</span>{{else}}<span class="pill bad">offline</span>{{end}}
-      <span class="muted">seen {{since .D.LastSeenAt}}</span>
-      {{if gt .D.WakeMisses 0}}<span class="pill warn">wake-misses {{.D.WakeMisses}}</span>{{end}}
-    </div>
-    {{if $.CanMutate}}
-    <div class="sim-actions">
-      {{if .Online}}<form method="post" action="/admin/devices/{{.D.ID}}/rescan" style="display:inline"><button type="submit">Re-scan SIMs</button></form>{{end}}
-      <form method="post" action="/admin/devices/{{.D.ID}}/rename" class="rename-form" style="display:inline">
-        <input name="name" value="{{.D.Name}}" aria-label="Device name">
-        <button type="submit">Rename</button>
-      </form>
-      <form method="post" action="/admin/devices/{{.D.ID}}/delete" style="display:inline"
-            onsubmit="return confirm('Unlink {{.D.Name}}? The phone disconnects now and must be re-enrolled to return.')">
-        <button type="submit" class="danger">Unlink / Delete</button>
-      </form>
-    </div>
-    {{end}}
-  </div>
-  <div class="table-wrap">
-  <table class="grid">
-    <thead><tr><th>Slot</th><th>Operator</th><th>MSISDN</th><th>Status</th><th>Quota (segments/day)</th><th>Health</th><th>Actions</th></tr></thead>
-    <tbody>
-    {{range .Sims}}
-      <tr>
-        <td data-label="Slot">{{.Slot}} <span class="muted">sub {{.SubscriptionID}}</span></td>
-        <td data-label="Operator">{{.Operator}}{{if .OperatorLocked}} 🔒{{end}}</td>
-        <td class="mono" data-label="MSISDN">{{if .MSISDN}}{{maskMSISDN .MSISDN}}{{else}}—{{end}}</td>
-        <td data-label="Status">{{template "statusPill" (printf "%s" .Status)}}</td>
-        <td data-label="Quota">
-          <div class="quota"><div class="quota-bar" style="width:{{quotaPct .SentToday .DailyQuota}}%"></div></div>
-          <span class="mono muted">{{.SentToday}} sent</span>
+<div class="split">
+  <div class="loglist" id="rows">
+    {{range .Devices}}
+      <div class="logitem" hx-get="/admin/fleet/{{.D.ID}}" hx-target="#drawer" hx-swap="innerHTML" role="button" tabindex="0">
+        <span class="li-lead muted">{{template "ic_fleet"}}</span>
+        <div class="li-body">
+          <div class="li-title">{{.D.Name}}</div>
+          <div class="li-sub">{{range $i, $o := .Ops}}{{if $i}} · {{end}}{{$o}}{{end}}{{if .Ops}} · {{end}}{{len .Sims}} {{t $.Lang "fleet.sims"}} · {{t $.Lang "fleet.seen"}} {{since .D.LastSeenAt}}</div>
+        </div>
+        <div class="li-trail">
           {{if $.CanMutate}}
-          <form method="post" action="/admin/sims/{{.ID}}/quota" class="quota-form">
-            <input type="number" name="daily_quota" value="{{.DailyQuota}}" min="0" max="100000" aria-label="Daily quota">
-            <button type="submit">Save</button>
+          <form method="post" action="/admin/devices/{{.D.ID}}/rescan" onclick="event.stopPropagation()" onsubmit="event.stopPropagation()">
+            <button type="submit" class="icon-btn sync-btn" title="{{t $.Lang "fleet.sync"}}" aria-label="{{t $.Lang "fleet.sync"}}">{{template "ic_sync"}}</button>
           </form>
-          {{else}}
-          <span class="mono muted">/ {{.DailyQuota}}</span>
           {{end}}
-        </td>
-        <td class="num" data-label="Health">{{.HealthScore}}</td>
-        <td data-label="Actions" class="sim-actions">
-          {{if $.CanMutate}}
-          {{if eq (printf "%s" .Status) "DISABLED"}}
-            <form method="post" action="/admin/sims/{{.ID}}/enable" style="display:inline"><button type="submit">Enable</button></form>
-          {{else}}
-            <form method="post" action="/admin/sims/{{.ID}}/cooldown" style="display:inline"><button type="submit">Cooldown</button></form>
-            <form method="post" action="/admin/sims/{{.ID}}/disable" style="display:inline"><button type="submit">Disable</button></form>
-          {{end}}
-          {{else}}<span class="muted">—</span>{{end}}
-        </td>
-      </tr>
+          <svg class="li-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </div>
+      </div>
     {{else}}
-      <tr><td colspan="7" class="muted">no SIMs reported</td></tr>
+      <div class="logempty muted">{{t .Lang "fleet.no_devices"}} {{t .Lang "fleet.enroll_link"}} <a href="/admin/enrollment">{{t .Lang "nav.enrollment"}}</a>.</div>
     {{end}}
-    </tbody>
-  </table>
   </div>
+  <aside id="drawer" class="drawer"><p class="muted">{{t .Lang "fleet.pick"}}</p></aside>
 </div>
-{{else}}
-<div class="card"><p class="muted">No devices enrolled yet. Issue an enrollment token under <a href="/admin/enrollment">Enrollment</a>.</p></div>
-{{end}}
+<div id="drawer-scrim" class="drawer-scrim"></div>
 {{end}}

@@ -1,31 +1,32 @@
 {{define "content"}}
-<h1>Send SMS</h1>
-<p class="muted">Queue a message from the console. It routes on-net (same operator) with random fallback, like the API.</p>
+{{$lang := .Lang}}
+<h1>{{t $lang "compose.title"}}</h1>
+<p class="muted">{{t $lang "compose.intro"}}</p>
 
-{{if .Sent}}<div class="callout">Queued — detected operator <strong>{{.Sent}}</strong>. Track it under <a href="/admin/messages">Messages</a>.</div>{{end}}
+{{if .Sent}}<div class="callout">{{t $lang "compose.queued_prefix"}} <strong>{{.Sent}}</strong>. {{t $lang "compose.queued_track"}} <a href="/admin/messages">{{t $lang "compose.messages_link"}}</a>.</div>{{end}}
 {{if .Error}}<div class="err">{{.Error}}</div>{{end}}
 
 <div class="card compose-card">
   <form method="post" action="/admin/compose" class="compose-form">
-    <label>Destination number
-      <input name="to" inputmode="tel" placeholder="0812-3456-7890 or +6281..." autocomplete="off" required>
+    <label>{{t $lang "compose.destination_number"}}
+      <input name="to" inputmode="tel" placeholder="{{t $lang "compose.to_ph"}}" autocomplete="off" required>
     </label>
-    <label>Message
-      <textarea name="message" rows="4" placeholder="Type the SMS…" required></textarea>
+    <label>{{t $lang "compose.message"}}
+      <textarea name="message" rows="4" placeholder="{{t $lang "compose.message_ph"}}" required></textarea>
     </label>
     <div class="row2">
-      <label>Routing
+      <label>{{t $lang "compose.routing"}}
         <select name="routing_policy">
-          <option value="ON_NET_PREF">On-net preferred (fallback allowed)</option>
-          <option value="ON_NET_STRICT">On-net strict (no fallback)</option>
-          <option value="ANY">Any SIM</option>
+          <option value="ON_NET_PREF">{{t $lang "compose.routing_on_net_pref"}}</option>
+          <option value="ON_NET_STRICT">{{t $lang "compose.routing_on_net_strict"}}</option>
+          <option value="ANY">{{t $lang "compose.routing_any"}}</option>
         </select>
       </label>
-      <label>TTL (seconds)
-        <input name="ttl_seconds" inputmode="numeric" placeholder="default" autocomplete="off">
+      <label>{{t $lang "compose.ttl_seconds"}}
+        <input name="ttl_seconds" inputmode="numeric" placeholder="{{t $lang "compose.ttl_ph"}}" autocomplete="off">
       </label>
     </div>
-    <button type="submit" class="primary">Send</button>
+    <button type="submit" class="primary">{{t $lang "compose.send"}}</button>
   </form>
 </div>
 {{end}}

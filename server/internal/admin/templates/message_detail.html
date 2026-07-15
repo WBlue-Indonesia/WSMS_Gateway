@@ -1,28 +1,29 @@
 {{define "message_detail"}}
+{{$lang := .Lang}}
 <div class="drawer-head">
   <div class="dh-title">
-    <h2>Message</h2>
+    <h2>{{t $lang "msgdetail.title"}}</h2>
     <span class="mono muted">{{.M.ID}}</span>
   </div>
-  <button type="button" class="sheet-close" onclick="wsmsCloseSheet()" aria-label="Close">✕</button>
+  <button type="button" class="sheet-close" onclick="wsmsCloseSheet()" aria-label="{{t $lang "msgdetail.close"}}">✕</button>
 </div>
 
 <dl class="kv">
-  <dt>To</dt>
+  <dt>{{t $lang "msgdetail.to"}}</dt>
   <dd>
     <span id="msisdn">{{maskMSISDN .M.TargetMSISDN}}</span>
     {{if or (eq .Role "owner") (eq .Role "operator") (eq .Role "support")}}
       <button class="link" hx-post="/admin/messages/{{.M.ID}}/unmask" hx-target="#msisdn" hx-swap="outerHTML"
-              hx-vals='{"reason":"support lookup"}'>unmask</button>
+              hx-vals='{"reason":"support lookup"}'>{{t $lang "msgdetail.unmask"}}</button>
     {{end}}
   </dd>
-  <dt>Target operator</dt><dd>{{.M.TargetOperator}}</dd>
-  <dt>Assigned</dt><dd>{{if .M.AssignedOperator}}{{.M.AssignedOperator}}{{if ne (printf "%s" .M.AssignedOperator) (printf "%s" .M.TargetOperator)}} <span class="pill warn">fallback</span>{{else}} <span class="pill ok">on-net</span>{{end}}{{else}}—{{end}}</dd>
-  <dt>Status</dt><dd>{{template "statusPill" (printf "%s" .M.Status)}}</dd>
-  <dt>Encoding</dt><dd>{{.M.Encoding}} · {{.M.Segments}} seg</dd>
-  <dt>Attempts</dt><dd>{{.M.Attempts}} / {{.M.MaxAttempts}}</dd>
-  <dt>Expires</dt><dd>{{fmtTime .M.ExpiresAt}}</dd>
-  {{if .M.LastError}}<dt>Last error</dt><dd class="err-txt">{{.M.LastError}}</dd>{{end}}
+  <dt>{{t $lang "msgdetail.target_operator"}}</dt><dd>{{.M.TargetOperator}}</dd>
+  <dt>{{t $lang "msgdetail.assigned"}}</dt><dd>{{if .M.AssignedOperator}}{{.M.AssignedOperator}}{{if ne (printf "%s" .M.AssignedOperator) (printf "%s" .M.TargetOperator)}} <span class="pill warn">{{t $lang "msgdetail.fallback"}}</span>{{else}} <span class="pill ok">{{t $lang "msgdetail.on_net"}}</span>{{end}}{{else}}—{{end}}</dd>
+  <dt>{{t $lang "msgdetail.status"}}</dt><dd>{{template "statusPill" (printf "%s" .M.Status)}}</dd>
+  <dt>{{t $lang "msgdetail.encoding"}}</dt><dd>{{.M.Encoding}} · {{.M.Segments}} {{t $lang "msgdetail.seg"}}</dd>
+  <dt>{{t $lang "msgdetail.attempts"}}</dt><dd>{{.M.Attempts}} / {{.M.MaxAttempts}}</dd>
+  <dt>{{t $lang "msgdetail.expires"}}</dt><dd>{{fmtTime .M.ExpiresAt}}</dd>
+  {{if .M.LastError}}<dt>{{t $lang "msgdetail.last_error"}}</dt><dd class="err-txt">{{.M.LastError}}</dd>{{end}}
 </dl>
 
 <div class="body-box">{{.M.Body}}</div>
@@ -30,16 +31,16 @@
 {{if or (eq .Role "owner") (eq .Role "operator")}}
   {{if not (or (eq (printf "%s" .M.Status) "DELIVERED") (eq (printf "%s" .M.Status) "SENT") (eq (printf "%s" .M.Status) "SENT_UNCONFIRMED") (eq (printf "%s" .M.Status) "FAILED") (eq (printf "%s" .M.Status) "EXPIRED") (eq (printf "%s" .M.Status) "CANCELLED"))}}
     <button hx-post="/admin/messages/{{.M.ID}}/cancel" hx-target="#drawer" hx-swap="innerHTML"
-            class="danger" style="margin-bottom:12px">Cancel message</button>
+            class="danger" style="margin-bottom:12px">{{t $lang "msgdetail.cancel_message"}}</button>
   {{end}}
 {{end}}
 
-<h3>Lifecycle</h3>
+<h3>{{t $lang "msgdetail.lifecycle"}}</h3>
 <ol class="timeline">
 {{range .Events}}
   <li><span class="ev">{{.EventType}}</span><span class="mono muted">{{fmtTime .CreatedAt}}</span></li>
 {{else}}
-  <li class="muted">no events</li>
+  <li class="muted">{{t $lang "msgdetail.no_events"}}</li>
 {{end}}
 </ol>
 {{end}}

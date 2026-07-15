@@ -1,30 +1,31 @@
 {{define "content"}}
-<h1>Clients &amp; API keys</h1>
-<p class="muted">API callers and their bearer keys. Secrets are stored hashed/encrypted and shown only once, at creation.</p>
+{{$lang := .Lang}}
+<h1>{{t $lang "clients.title"}}</h1>
+<p class="muted">{{t $lang "clients.intro"}}</p>
 
 {{if .Error}}<div class="err">{{.Error}}</div>{{end}}
 
 {{if .Reveal}}
 <div class="callout reveal">
   <strong>
-    {{if eq .RevealKind "apikey"}}New API key — copy it now, it is shown once{{end}}
-    {{if eq .RevealKind "webhook"}}New webhook secret — shown once{{end}}
-    {{if eq .RevealKind "signing"}}New signing secret — shown once{{end}}
+    {{if eq .RevealKind "apikey"}}{{t $lang "clients.reveal_apikey"}}{{end}}
+    {{if eq .RevealKind "webhook"}}{{t $lang "clients.reveal_webhook"}}{{end}}
+    {{if eq .RevealKind "signing"}}{{t $lang "clients.reveal_signing"}}{{end}}
     {{if .RevealLabel}} <span class="muted">({{.RevealLabel}})</span>{{end}}
   </strong>
   <code class="token">{{.Reveal}}</code>
   <p class="muted small">
-    {{if eq .RevealKind "apikey"}}Send it as <code>Authorization: Bearer &lt;token&gt;</code>. It is not recoverable — only its hash is stored.
-    {{else if eq .RevealKind "webhook"}}Verify webhooks with <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.
-    {{else}}Sign requests with <code>X-WSMS-Timestamp</code> and <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.{{end}}
+    {{if eq .RevealKind "apikey"}}{{t $lang "clients.reveal_apikey_send"}} <code>Authorization: Bearer &lt;token&gt;</code>. {{t $lang "clients.reveal_apikey_note"}}
+    {{else if eq .RevealKind "webhook"}}{{t $lang "clients.reveal_webhook_verify"}} <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.
+    {{else}}{{t $lang "clients.reveal_signing_sign"}} <code>X-WSMS-Timestamp</code> {{t $lang "clients.and"}} <code>X-WSMS-Signature: sha256=HMAC_SHA256(secret, timestamp + "." + body)</code>.{{end}}
   </p>
 </div>
 {{end}}
 
 {{if .CanMutate}}
 <form method="post" action="/admin/clients" class="inline-form">
-  <input name="name" placeholder="New client name (e.g. billing-app)" aria-label="New client name" required>
-  <button type="submit">+ Add client</button>
+  <input name="name" placeholder="{{t $lang "clients.new_client_ph"}}" aria-label="{{t $lang "clients.new_client_label"}}" required>
+  <button type="submit">+ {{t $lang "clients.add_client"}}</button>
 </form>
 {{end}}
 
@@ -34,20 +35,20 @@
     <div>
       <strong>{{.Client.Name}}</strong>
       <span class="mono muted">{{shortID .Client.ID}}</span>
-      {{if .Client.Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">disabled</span>{{end}}
-      {{if .WebhookSecret}}<span class="pill ok">webhook signed</span>{{else}}<span class="pill muted">webhook unsigned</span>{{end}}
+      {{if .Client.Active}}<span class="pill ok">{{t $lang "clients.status_active"}}</span>{{else}}<span class="pill bad">{{t $lang "clients.status_disabled"}}</span>{{end}}
+      {{if .WebhookSecret}}<span class="pill ok">{{t $lang "clients.webhook_signed"}}</span>{{else}}<span class="pill muted">{{t $lang "clients.webhook_unsigned"}}</span>{{end}}
     </div>
     {{if $.CanMutate}}
     <div class="sim-actions">
       <form method="post" action="/admin/clients/{{.Client.ID}}/webhook-secret" style="display:inline">
-        <button type="submit">{{if .WebhookSecret}}Rotate{{else}}Set{{end}} webhook secret</button>
+        <button type="submit">{{if .WebhookSecret}}{{t $lang "clients.rotate"}}{{else}}{{t $lang "clients.set"}}{{end}} {{t $lang "clients.webhook_secret"}}</button>
       </form>
       <form method="post" action="/admin/clients/{{.Client.ID}}/toggle" style="display:inline">
-        <button type="submit">{{if .Client.Active}}Disable{{else}}Enable{{end}}</button>
+        <button type="submit">{{if .Client.Active}}{{t $lang "clients.disable"}}{{else}}{{t $lang "clients.enable"}}{{end}}</button>
       </form>
       <form method="post" action="/admin/clients/{{.Client.ID}}/delete" style="display:inline"
-            onsubmit="return confirm('Delete client {{.Client.Name}} and revoke all its keys?')">
-        <button type="submit" class="danger">Delete</button>
+            onsubmit="return confirm('{{t $lang "clients.confirm_delete_pre"}} {{.Client.Name}} {{t $lang "clients.confirm_delete_post"}}')">
+        <button type="submit" class="danger">{{t $lang "clients.delete"}}</button>
       </form>
     </div>
     {{end}}
@@ -55,29 +56,29 @@
 
   <div class="table-wrap">
   <table class="grid">
-    <thead><tr><th>Key</th><th>Scopes</th><th>Signing</th><th>Status</th><th>Last used</th><th></th></tr></thead>
+    <thead><tr><th>{{t $lang "clients.th_key"}}</th><th>{{t $lang "clients.th_scopes"}}</th><th>{{t $lang "clients.th_signing"}}</th><th>{{t $lang "clients.th_status"}}</th><th>{{t $lang "clients.th_last_used"}}</th><th></th></tr></thead>
     <tbody>
     {{range .Keys}}
       <tr>
-        <td class="mono" data-label="Key">wsms_{{.Prefix}}<span class="muted">.•••••</span></td>
-        <td class="mono small" data-label="Scopes">{{.Scopes}}</td>
-        <td data-label="Signing">{{if .SigningSecretEnc}}<span class="pill ok">on</span>{{else}}<span class="pill muted">off</span>{{end}}</td>
-        <td data-label="Status">{{if .Active}}<span class="pill ok">active</span>{{else}}<span class="pill bad">revoked</span>{{end}}</td>
-        <td class="mono" data-label="Last used">{{fmtTimeP .LastUsedAt}}</td>
+        <td class="mono" data-label="{{t $lang "clients.th_key"}}">wsms_{{.Prefix}}<span class="muted">.•••••</span></td>
+        <td class="mono small" data-label="{{t $lang "clients.th_scopes"}}">{{.Scopes}}</td>
+        <td data-label="{{t $lang "clients.th_signing"}}">{{if .SigningSecretEnc}}<span class="pill ok">{{t $lang "clients.signing_on"}}</span>{{else}}<span class="pill muted">{{t $lang "clients.signing_off"}}</span>{{end}}</td>
+        <td data-label="{{t $lang "clients.th_status"}}">{{if .Active}}<span class="pill ok">{{t $lang "clients.status_active"}}</span>{{else}}<span class="pill bad">{{t $lang "clients.status_revoked"}}</span>{{end}}</td>
+        <td class="mono" data-label="{{t $lang "clients.th_last_used"}}">{{fmtTimeP .LastUsedAt}}</td>
         <td data-label="" class="sim-actions">
           {{if $.CanMutate}}
           <form method="post" action="/admin/keys/{{.ID}}/enable-signing" style="display:inline">
-            <button type="submit">{{if .SigningSecretEnc}}Rotate{{else}}Enable{{end}} signing</button>
+            <button type="submit">{{if .SigningSecretEnc}}{{t $lang "clients.rotate"}}{{else}}{{t $lang "clients.enable"}}{{end}} {{t $lang "clients.signing_noun"}}</button>
           </form>
           <form method="post" action="/admin/keys/{{.ID}}/revoke" style="display:inline"
-                onsubmit="return confirm('Revoke key wsms_{{.Prefix}}? This cannot be undone.')">
-            <button type="submit" class="danger">Revoke</button>
+                onsubmit="return confirm('{{t $lang "clients.confirm_revoke_pre"}} wsms_{{.Prefix}}? {{t $lang "clients.confirm_revoke_post"}}')">
+            <button type="submit" class="danger">{{t $lang "clients.revoke"}}</button>
           </form>
           {{end}}
         </td>
       </tr>
     {{else}}
-      <tr><td colspan="6" class="muted">no keys yet</td></tr>
+      <tr><td colspan="6" class="muted">{{t $lang "clients.no_keys"}}</td></tr>
     {{end}}
     </tbody>
   </table>
@@ -85,16 +86,16 @@
 
   {{if $.CanMutate}}
   <form method="post" action="/admin/clients/{{.Client.ID}}/keys" class="key-form">
-    <span class="muted small">New key scopes:</span>
+    <span class="muted small">{{t $lang "clients.new_key_scopes"}}</span>
     {{range $.Scopes}}
       <label class="scope-check"><input type="checkbox" name="{{scopeField .}}" value="1"
         {{if or (eq . "messages:write") (eq . "messages:read")}}checked{{end}}> {{.}}</label>
     {{end}}
-    <button type="submit">+ Create key</button>
+    <button type="submit">+ {{t $lang "clients.create_key"}}</button>
   </form>
   {{end}}
 </div>
 {{else}}
-<div class="card"><p class="muted">No clients yet.{{if .CanMutate}} Add one above.{{end}}</p></div>
+<div class="card"><p class="muted">{{t $lang "clients.no_clients"}}{{if .CanMutate}} {{t $lang "clients.add_one_above"}}{{end}}</p></div>
 {{end}}
 {{end}}

@@ -1,0 +1,55 @@
+{{define "fleet_detail"}}
+{{$lang := .Lang}}
+<div class="drawer-head">
+  <div class="dh-title">
+    <h2>{{.Dev.D.Name}}</h2>
+    <span class="mono muted">{{shortID .Dev.D.ID}} · {{t $lang "fleet.seen"}} {{since .Dev.D.LastSeenAt}}{{if gt .Dev.D.WakeMisses 0}} · {{t $lang "fleet.wake_misses"}} {{.Dev.D.WakeMisses}}{{end}}</span>
+  </div>
+  <button type="button" class="sheet-close" onclick="wsmsCloseSheet()" aria-label="{{t $lang "common.close"}}">✕</button>
+</div>
+
+{{if .CanMutate}}
+<div class="dev-controls">
+  <form method="post" action="/admin/devices/{{.Dev.D.ID}}/rescan">
+    <button type="submit" class="btn-icon">{{template "ic_sync"}}<span>{{t $lang "fleet.sync"}}</span></button>
+  </form>
+  <form method="post" action="/admin/devices/{{.Dev.D.ID}}/rename" class="rename-form">
+    <input name="name" value="{{.Dev.D.Name}}" aria-label="{{t $lang "fleet.name"}}">
+    <button type="submit">{{t $lang "fleet.rename"}}</button>
+  </form>
+  <form method="post" action="/admin/devices/{{.Dev.D.ID}}/delete"
+        onsubmit="return confirm('{{t $lang "fleet.unlink_confirm"}}')">
+    <button type="submit" class="danger">{{t $lang "fleet.unlink"}}</button>
+  </form>
+</div>
+{{end}}
+
+{{range .Dev.Sims}}
+<div class="sim-card">
+  <div class="sim-top">
+    <div><strong>{{.Operator}}</strong>{{if .OperatorLocked}} 🔒{{end}} <span class="muted">{{t $lang "fleet.slot"}} {{.Slot}} · sub {{.SubscriptionID}}</span></div>
+    {{template "statusPill" (printf "%s" .Status)}}
+  </div>
+  <div class="sim-row"><span class="muted">{{t $lang "fleet.msisdn"}}</span><span class="mono">{{if .MSISDN}}{{maskMSISDN .MSISDN}}{{else}}—{{end}}</span></div>
+  <div class="sim-row"><span class="muted">{{t $lang "fleet.quota"}}</span><span><span class="mono">{{.SentToday}}</span> {{t $lang "fleet.sent"}} / {{.DailyQuota}}</span></div>
+  <div class="quota"><div class="quota-bar" style="width:{{quotaPct .SentToday .DailyQuota}}%"></div></div>
+  <div class="sim-row"><span class="muted">{{t $lang "fleet.health"}}</span><span class="mono">{{.HealthScore}}</span></div>
+  {{if $.CanMutate}}
+  <div class="sim-actions">
+    <form method="post" action="/admin/sims/{{.ID}}/quota" class="quota-form">
+      <input type="number" name="daily_quota" value="{{.DailyQuota}}" min="0" max="100000" aria-label="{{t $lang "fleet.quota_full"}}">
+      <button type="submit">{{t $lang "common.save"}}</button>
+    </form>
+    {{if eq (printf "%s" .Status) "DISABLED"}}
+      <form method="post" action="/admin/sims/{{.ID}}/enable"><button type="submit">{{t $lang "common.enable"}}</button></form>
+    {{else}}
+      <form method="post" action="/admin/sims/{{.ID}}/cooldown"><button type="submit">{{t $lang "fleet.cooldown"}}</button></form>
+      <form method="post" action="/admin/sims/{{.ID}}/disable"><button type="submit">{{t $lang "common.disable"}}</button></form>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{else}}
+<p class="muted">{{t $lang "fleet.no_sims"}}</p>
+{{end}}
+{{end}}

@@ -148,7 +148,13 @@ func (s *Server) saveRouting(c *gin.Context) {
 		Updates(map[string]any{"fallback_mode": mode, "fallback_operator": op, "updated_at": time.Now()})
 	s.engine.SetFallback(mode, op)
 	s.audit(c, "routing.fallback", "settings", "1", string(mode)+" "+string(op))
-	c.Redirect(http.StatusSeeOther, "/admin/fleet")
+	// The form lives in the settings modal: on htmx, swap the modal body with the
+	// refreshed (saved) state; otherwise fall back to a plain redirect.
+	if c.GetHeader("HX-Request") == "true" {
+		s.renderSettings(c, true)
+		return
+	}
+	c.Redirect(http.StatusSeeOther, "/admin")
 }
 
 // validOperator reports whether op is a real (non-UNKNOWN) mobile operator.

@@ -1,28 +1,28 @@
 <!doctype html>
-<html lang="id">
+<html lang="{{.Lang}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>WSMS Gateway — WBlue</title>
-  <meta name="description" content="Gerbang SMS self-hosted milik WBlue · WBlue's self-hosted SMS gateway. Sistem internal, akses terbatas / internal system, restricted access.">
+  <meta name="description" content="WBlue's self-hosted SMS gateway. Internal system, restricted access.">
   <meta name="robots" content="noindex">
   <link rel="stylesheet" href="/admin/static/admin.css?v={{.AssetVer}}">
   <style>
     body { overflow-x: hidden; }
     .pub { max-width: 960px; margin: 0 auto; padding: 0 20px 64px; }
-    .pub-top { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
+    .pub-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 22px 0; flex-wrap: wrap; }
     .pub-top .brand { font-weight: 700; font-size: 20px; padding: 0; }
     .pub-top .brand .hl { color: var(--accent2); }
-    .pub-top a.enter { background: var(--accent); border: 1px solid transparent; color: var(--accent-ink);
+    .pub-top .top-actions { display: flex; align-items: center; gap: 12px; }
+    .pub-top a.enter { background: var(--accent); border: 1px solid transparent; color: #fff;
       padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600; }
     .pub-top a.enter:hover { filter: brightness(1.08); text-decoration: none; }
 
     .hero { padding: 40px 0 8px; }
     .hero h1 { font-size: clamp(30px, 6vw, 46px); line-height: 1.08; margin: 0 0 14px; }
     .hero h1 span { color: var(--accent); }
-    .lead { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; max-width: 780px; }
+    .lead { max-width: 720px; }
     .lead p { margin: 0; font-size: 16px; color: var(--fg); }
-    .lead .en { color: var(--muted); }
     .tagset { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 6px; }
     .tag { background: var(--panel2); border: 1px solid var(--line); border-radius: 999px;
       padding: 5px 12px; font-size: 12.5px; color: var(--muted); }
@@ -32,11 +32,9 @@
     .info h2 { font-size: 15px; margin: 0 0 10px; display: flex; align-items: center; gap: 9px; }
     .info h2 svg { width: 20px; height: 20px; flex: none; color: var(--accent2);
       padding: 4px; border-radius: 8px; background: var(--accent-soft); box-sizing: content-box; }
-    .info .id { font-size: 14px; margin: 0 0 4px; }
-    .info .en { font-size: 13px; color: var(--muted); margin: 0; }
+    .info p { font-size: 14px; margin: 0; color: var(--fg); }
     .info ul { margin: 8px 0 0; padding-left: 18px; }
     .info li { margin: 4px 0; font-size: 13.5px; }
-    .info li .en { display: block; }
 
     .access { display: flex; flex-wrap: wrap; gap: 12px; }
     .access a.cta { background: var(--accent); color: #fff; border: none; padding: 12px 20px;
@@ -48,77 +46,114 @@
 
     .notice { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--warn);
       border-radius: 10px; padding: 14px 16px; margin: 30px 0 0; font-size: 13px; }
-    .notice .en { color: var(--muted); display: block; margin-top: 4px; }
 
     footer.pub-foot { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
       display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 12.5px; }
     footer.pub-foot a { color: var(--muted); }
-
-    @media (max-width: 620px) {
-      .lead { grid-template-columns: 1fr; gap: 2px; }
-      .lead .en { margin-bottom: 8px; }
-    }
   </style>
 </head>
 <body>
+{{$id := eq .Lang "id"}}
 <div class="pub">
   <div class="pub-top">
     <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt="WBlue"><span class="wm"><span class="hl">W</span>SMS Gateway</span></div>
-    <a class="enter" href="/admin">Masuk / Login</a>
+    <div class="top-actions">
+      <div class="lang-switch">
+        <a href="/admin/lang/id?next=/" class="{{if $id}}active{{end}}">ID</a>
+        <a href="/admin/lang/en?next=/" class="{{if not $id}}active{{end}}">EN</a>
+      </div>
+      <a class="enter" href="/admin">{{if $id}}Masuk{{else}}Login{{end}}</a>
+    </div>
   </div>
 
   <section class="hero">
+    {{if $id}}
     <h1>Gerbang SMS <span>self-hosted</span><br>milik WBlue</h1>
-    <div class="lead">
-      <p>Sistem pengiriman SMS lewat armada ponsel Android milik sendiri, dengan pemilihan SIM sesuai operator tujuan (on-net = lebih murah).</p>
-      <p lang="en" class="en">A self-hosted SMS sender built on an owned fleet of Android phones, with operator-aware SIM routing (on-net = cheaper).</p>
-    </div>
+    <div class="lead"><p>Sistem pengiriman SMS lewat armada ponsel Android milik sendiri, dengan pemilihan SIM sesuai operator tujuan (on-net = lebih murah).</p></div>
+    {{else}}
+    <h1>WBlue's <span>self-hosted</span><br>SMS gateway</h1>
+    <div class="lead"><p>A self-hosted SMS sender built on an owned fleet of Android phones, with operator-aware SIM routing (on-net = cheaper).</p></div>
+    {{end}}
     <div class="tagset">
+      {{if $id}}
+      <span class="tag">Perutean sadar-operator</span>
+      <span class="tag">Armada Android dual-SIM</span>
+      <span class="tag">Siklus pengiriman</span>
+      <span class="tag">Self-hosted</span>
+      <span class="tag">API + Webhook</span>
+      {{else}}
       <span class="tag">Operator-aware routing</span>
       <span class="tag">Dual-SIM Android fleet</span>
       <span class="tag">Delivery lifecycle</span>
       <span class="tag">Self-hosted</span>
       <span class="tag">API + Webhooks</span>
+      {{end}}
     </div>
   </section>
 
   <div class="grid2">
     <div class="info">
-      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Apa ini? / What is this?</h2>
-      <p class="id">Gateway SMS internal WBlue. Bukan layanan SMS massal untuk umum — dibuat untuk pengiriman volume rendah, opt-in, dari SIM milik sendiri.</p>
-      <p lang="en" class="en">WBlue's internal SMS gateway. Not a public bulk-SMS service — built for low-volume, opt-in sending from our own SIMs.</p>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>{{if $id}}Apa ini?{{else}}What is this?{{end}}</h2>
+      {{if $id}}
+      <p>Gateway SMS internal WBlue. Bukan layanan SMS massal untuk umum — dibuat untuk pengiriman volume rendah, opt-in, dari SIM milik sendiri.</p>
+      {{else}}
+      <p>WBlue's internal SMS gateway. Not a public bulk-SMS service — built for low-volume, opt-in sending from our own SIMs.</p>
+      {{end}}
     </div>
     <div class="info">
-      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Untuk siapa? / Who is it for?</h2>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>{{if $id}}Untuk siapa?{{else}}Who is it for?{{end}}</h2>
       <ul>
-        <li>Tim internal WBlue <span lang="en" class="en">WBlue internal teams</span></li>
-        <li>Klien / aplikasi terdaftar via API key <span lang="en" class="en">Registered clients / apps via API key</span></li>
-        <li>Operator armada ponsel <span lang="en" class="en">Phone-fleet operators</span></li>
+        {{if $id}}
+        <li>Tim internal WBlue</li>
+        <li>Klien / aplikasi terdaftar via API key</li>
+        <li>Operator armada ponsel</li>
+        {{else}}
+        <li>WBlue internal teams</li>
+        <li>Registered clients / apps via API key</li>
+        <li>Phone-fleet operators</li>
+        {{end}}
       </ul>
     </div>
     <div class="info">
-      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Cara akses / How to access</h2>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>{{if $id}}Cara akses{{else}}How to access{{end}}</h2>
       <ul>
-        <li>Operator & admin → panel <a href="/admin">/admin</a></li>
-        <li>Integrasi API → minta API key ke admin <span lang="en" class="en">Integrations → request an API key from an admin</span></li>
-        <li>Ponsel pengirim → enrollment token dari panel <span lang="en" class="en">Sender phones → pair with an enrollment token from the console</span></li>
+        {{if $id}}
+        <li>Operator &amp; admin → panel <a href="/admin">/admin</a></li>
+        <li>Integrasi API → minta API key ke admin</li>
+        <li>Ponsel pengirim → enrollment token dari panel</li>
+        {{else}}
+        <li>Operators &amp; admins → console <a href="/admin">/admin</a></li>
+        <li>Integrations → request an API key from an admin</li>
+        <li>Sender phones → pair with an enrollment token from the console</li>
+        {{end}}
       </ul>
     </div>
     <div class="info">
-      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Keamanan / Security</h2>
-      <p class="id">Setiap panggilan API pakai bearer key (disimpan ter-hash), webhook & request ditandatangani HMAC, akses panel berbasis peran dan diaudit.</p>
-      <p lang="en" class="en">Every API call uses a hashed bearer key; webhooks and requests are HMAC-signed; console access is role-based and audited.</p>
+      <h2><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>{{if $id}}Keamanan{{else}}Security{{end}}</h2>
+      {{if $id}}
+      <p>Setiap panggilan API pakai bearer key (disimpan ter-hash), webhook &amp; request ditandatangani HMAC, akses panel berbasis peran dan diaudit.</p>
+      {{else}}
+      <p>Every API call uses a hashed bearer key; webhooks and requests are HMAC-signed; console access is role-based and audited.</p>
+      {{end}}
     </div>
   </div>
 
   <div class="access">
+    {{if $id}}
     <a class="cta" href="/admin">Masuk ke panel admin →</a>
-    <a class="ghost" href="mailto:admin@wblue.id">Kontak admin / Contact</a>
+    <a class="ghost" href="mailto:admin@wblue.id">Kontak admin</a>
+    {{else}}
+    <a class="cta" href="/admin">Enter the admin console →</a>
+    <a class="ghost" href="mailto:admin@wblue.id">Contact</a>
+    {{end}}
   </div>
 
   <div class="notice">
+    {{if $id}}
     <strong>Sistem tertutup.</strong> Halaman ini hanya penjelasan. Pengiriman hanya untuk pemakaian sah, opt-in, dan volume rendah.
-    <span lang="en" class="en"><strong>Restricted system.</strong> This page is informational only. Sending is for authorized, opt-in, low-volume use only.</span>
+    {{else}}
+    <strong>Restricted system.</strong> This page is informational only. Sending is for authorized, opt-in, low-volume use only.
+    {{end}}
   </div>
 
   <footer class="pub-foot">

@@ -1,12 +1,13 @@
 {{define "content"}}
+{{$lang := .Lang}}
 <div class="login-card">
   <div class="brand"><img class="logo" src="/admin/static/logo.svg" alt=""><span class="wm"><span class="hl">W</span>SMS Gateway</span></div>
-  <p class="sub">Operator console · WBlue</p>
+  <p class="sub">{{t $lang "login.subtitle"}} · WBlue</p>
   {{if .Error}}<div class="err">{{.Error}}</div>{{end}}
   <form method="post" action="/admin/login">
-    <label>Username<input name="username" autofocus autocomplete="username"></label>
-    <label>Password<input name="password" type="password" autocomplete="current-password"></label>
-    <button type="submit">Sign in</button>
+    <label>{{t $lang "login.username"}}<input name="username" autofocus autocomplete="username"></label>
+    <label>{{t $lang "login.password"}}<input name="password" type="password" autocomplete="current-password"></label>
+    <button type="submit">{{t $lang "login.sign_in"}}</button>
   </form>
 </div>
 {{end}}

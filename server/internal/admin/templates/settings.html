@@ -1,0 +1,53 @@
+{{define "settings"}}
+{{$lang := .Lang}}
+<div class="drawer-head">
+  <div class="dh-title"><h2>{{t $lang "settings.title"}}</h2></div>
+  <button type="button" class="sheet-close" onclick="wsmsCloseModal()" aria-label="{{t $lang "common.close"}}">✕</button>
+</div>
+
+<div class="set-block">
+  <div class="set-label">{{t $lang "settings.language"}}</div>
+  <div class="lang-switch">
+    <a href="/admin/lang/id" onclick="this.href='/admin/lang/id?next='+encodeURIComponent(location.pathname)" class="{{if eq $lang "id"}}active{{end}}">ID</a>
+    <a href="/admin/lang/en" onclick="this.href='/admin/lang/en?next='+encodeURIComponent(location.pathname)" class="{{if eq $lang "en"}}active{{end}}">EN</a>
+  </div>
+</div>
+
+<div class="set-block">
+  <div class="set-label">{{t $lang "routing.title"}}
+    {{if .Saved}}<span class="saved-note">✓ {{t $lang "common.saved"}}</span>{{end}}
+  </div>
+  <p class="muted set-sub">{{t $lang "routing.sub"}}</p>
+  {{if .CanMutate}}
+  <form class="routing-form" hx-post="/admin/settings/routing" hx-target="#modal-body" hx-swap="innerHTML">
+    <label>{{t $lang "routing.mode"}}
+      <select name="mode" aria-label="{{t $lang "routing.mode"}}">
+        <option value="LEAST_LOADED" {{if eq .Routing.Mode "LEAST_LOADED"}}selected{{end}}>{{t $lang "routing.mode.least"}}</option>
+        <option value="DEFAULT_OP" {{if eq .Routing.Mode "DEFAULT_OP"}}selected{{end}}>{{t $lang "routing.mode.default"}}</option>
+        <option value="RANDOM" {{if eq .Routing.Mode "RANDOM"}}selected{{end}}>{{t $lang "routing.mode.random"}}</option>
+      </select>
+    </label>
+    <label class="op-field">{{t $lang "routing.operator"}}
+      <select name="operator" aria-label="{{t $lang "routing.operator"}}">
+        {{range .Routing.Owned}}
+          <option value="{{.}}" {{if eq (printf "%s" .) $.Routing.Operator}}selected{{end}}>{{.}}</option>
+        {{else}}
+          <option value="">{{t $lang "routing.no_ready"}}</option>
+        {{end}}
+      </select>
+    </label>
+    <button type="submit">{{t $lang "common.save"}}</button>
+  </form>
+  <p class="muted routing-hint">
+    {{if .Routing.Owned}}{{t $lang "routing.own"}} <strong>{{range $i, $o := .Routing.Owned}}{{if $i}}, {{end}}{{$o}}{{end}}</strong>. {{end}}
+    {{t $lang "routing.hint"}}
+  </p>
+  <script>
+  (function(){var f=document.querySelector('#modal-body .routing-form');if(!f)return;
+    var m=f.querySelector('[name=mode]'),o=f.querySelector('.op-field');
+    function s(){o.style.display=(m.value==='DEFAULT_OP')?'':'none';}
+    m.addEventListener('change',s);s();})();
+  </script>
+  {{end}}
+</div>
+{{end}}

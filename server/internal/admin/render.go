@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nizwar/wsms-gateway/server/internal/i18n"
 )
 
 // assetVer is a content hash of the CSS, appended as ?v= to asset URLs so a proxy
@@ -34,7 +35,7 @@ var staticFS embed.FS
 
 // Full pages are wrapped in layout.html; fragments (htmx partials) render bare.
 var fullPages = []string{"login", "overview", "messages", "compose", "fleet", "enrollment", "clients", "apidocs"}
-var fragments = []string{"message_detail", "messages_rows", "unmask"}
+var fragments = []string{"message_detail", "messages_rows", "unmask", "settings", "fleet_detail"}
 
 var (
 	pageTmpls  map[string]*template.Template
@@ -91,6 +92,8 @@ var funcs = template.FuncMap{
 	"lower":      strings.ToLower,
 	"sparkline":  sparkline,
 	"statusIcon": statusIcon,
+	// t localizes key for the given language (id→en→key fallback).
+	"t": i18n.T,
 	// scopeField maps a scope like "messages:write" to its form field name
 	// "scope_messages_write" (matches createKey's parser).
 	"scopeField": func(s string) string { return "scope_" + strings.ReplaceAll(s, ":", "_") },
@@ -154,6 +157,7 @@ func renderPage(c *gin.Context, name string, data gin.H) {
 	}
 	data["Page"] = name
 	data["AssetVer"] = assetVer
+	data["Lang"] = i18n.Resolve(c.Request)
 	if u, ok := c.Get("admin_user"); ok {
 		data["User"] = u
 	}
@@ -165,6 +169,12 @@ func renderPage(c *gin.Context, name string, data gin.H) {
 }
 
 func renderFragment(c *gin.Context, name string, data gin.H) {
+	if data == nil {
+		data = gin.H{}
+	}
+	if _, ok := data["Lang"]; !ok {
+		data["Lang"] = i18n.Resolve(c.Request)
+	}
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	if err := fragTmpls[name].ExecuteTemplate(c.Writer, name, data); err != nil {
 		c.String(http.StatusInternalServerError, "render error: %v", err)

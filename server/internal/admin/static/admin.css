@@ -118,11 +118,11 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: v
 .role { color: var(--accent2); text-transform: uppercase; font-size: 9.5px; letter-spacing: .05em; font-weight: 700; }
 .logout button { width: 100%; }
 
-/* theme toggle */
-.theme-toggle { --sz: 34px; width: var(--sz); height: var(--sz); flex: none; padding: 0; display: inline-flex;
+/* theme toggle + generic icon buttons (settings gear, etc.) */
+.theme-toggle, .icon-btn { --sz: 34px; width: var(--sz); height: var(--sz); flex: none; padding: 0; display: inline-flex;
   align-items: center; justify-content: center; border-radius: 9px; background: var(--panel2); border: 1px solid var(--line); cursor: pointer; color: var(--fg2); }
-.theme-toggle:hover { background: var(--panel3); color: var(--fg); }
-.theme-toggle svg { width: 17px; height: 17px; }
+.theme-toggle:hover, .icon-btn:hover { background: var(--panel3); color: var(--fg); }
+.theme-toggle svg, .icon-btn svg { width: 17px; height: 17px; }
 .theme-toggle .i-sun { display: none; } .theme-toggle .i-moon { display: block; }
 :root[data-theme="dark"] .theme-toggle .i-sun { display: block; }
 :root[data-theme="dark"] .theme-toggle .i-moon { display: none; }
@@ -312,6 +312,36 @@ tr.logrow td[data-label="Time"] { white-space: nowrap; }
   .routing-form label, .routing-form select, .routing-form button { width: 100%; }
 }
 
+/* ---- Settings modal --------------------------------------------------- */
+.modal { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal.open { display: flex; }
+.modal-scrim { position: absolute; inset: 0; background: rgba(4,8,18,.55); }
+.modal-card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-lg); padding: 16px 20px 22px; }
+.set-block { padding: 16px 0; border-top: 1px solid var(--line); }
+.set-block:first-of-type { border-top: none; padding-top: 2px; }
+.set-label { font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.set-sub { font-size: 12.5px; margin: 4px 0 12px; }
+.lang-switch { display: inline-flex; margin-top: 10px; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.lang-switch a { padding: 7px 20px; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--panel2); }
+.lang-switch a:hover { text-decoration: none; color: var(--fg); }
+.lang-switch a.active { background: var(--accent); color: #fff; }
+.saved-note { color: var(--ok); font-size: 12px; font-weight: 600; }
+
+/* ---- Fleet list summary + detail drawer ------------------------------- */
+.li-trail form { display: inline-flex; }
+.sync-btn { --sz: 32px; }
+.dev-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.dev-controls form { display: inline-flex; }
+.btn-icon { display: inline-flex; align-items: center; gap: 6px; }
+.btn-icon svg { width: 15px; height: 15px; }
+.sim-card { border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; margin-bottom: 10px; background: var(--panel2); }
+.sim-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sim-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; }
+.sim-card .quota { margin: 4px 0 6px; }
+.sim-card .sim-actions { margin-top: 10px; }
+.sim-card .quota-form { margin-left: 0; }
+
 /* ---- Login ------------------------------------------------------------ */
 .auth { display: flex; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; padding: 20px; background: var(--bg); position: relative; }
 .auth::before { content: ""; position: absolute; inset: 0; background: var(--brand-grad-soft); pointer-events: none; }
@@ -443,8 +473,8 @@ table.params td[data-label="Description"] { color: var(--fg2); }
   }
   .drawer-menu .grab { width: 40px; height: 4px; border-radius: 999px; background: var(--line2); margin: 6px auto 12px; }
   .drawer-menu nav { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .drawer-menu nav a { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 11px; background: var(--panel2); color: var(--fg); font-weight: 550; font-size: 14px; }
-  .drawer-menu nav a svg { width: 18px; height: 18px; opacity: .8; }
+  .drawer-menu nav a, .drawer-menu nav .more-link { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 11px; background: var(--panel2); color: var(--fg); font-weight: 550; font-size: 14px; border: none; cursor: pointer; text-align: left; width: 100%; font-family: inherit; }
+  .drawer-menu nav a svg, .drawer-menu nav .more-link svg { width: 18px; height: 18px; opacity: .8; }
   .drawer-menu nav a.active { background: var(--accent-soft); color: var(--accent); }
   .drawer-menu > .who { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   .nav-scrim { position: fixed; inset: 0; z-index: 55; background: rgba(4,10,22,.5); opacity: 0; pointer-events: none; transition: opacity .26s; }

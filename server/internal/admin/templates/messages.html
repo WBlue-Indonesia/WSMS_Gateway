@@ -1,19 +1,20 @@
 {{define "content"}}
+{{$lang := .Lang}}
 <div class="page-head">
-  <div><h1>Messages</h1><p class="muted">Recent messages · tap a row for its lifecycle</p></div>
+  <div><h1>{{t $lang "messages.title"}}</h1><p class="muted">{{t $lang "messages.subtitle"}}</p></div>
 </div>
 
 <form class="filters msg-filters" hx-get="/admin/messages/rows" hx-target="#rows"
       hx-trigger="submit, change from:select, keyup delay:400ms from:input[name=q]" hx-push-url="false">
-  <input type="search" name="q" placeholder="Search number · id · dedup key" value="{{.Q}}" aria-label="Search messages">
-  <select name="status" aria-label="Status filter">
-    <option value="">any status</option>
+  <input type="search" name="q" placeholder="{{t $lang "messages.search_ph"}}" value="{{.Q}}" aria-label="{{t $lang "messages.search_aria"}}">
+  <select name="status" aria-label="{{t $lang "messages.status_filter"}}">
+    <option value="">{{t $lang "messages.any_status"}}</option>
     {{range list "QUEUED" "ROUTING" "DISPATCHED" "AWAITING_ACK" "SENT" "SENT_UNCONFIRMED" "DELIVERED" "FAILED" "EXPIRED" "CANCELLED"}}
       <option value="{{.}}" {{if eq . $.Status}}selected{{end}}>{{.}}</option>
     {{end}}
   </select>
-  <select name="operator" aria-label="Operator filter">
-    <option value="">any operator</option>
+  <select name="operator" aria-label="{{t $lang "messages.operator_filter"}}">
+    <option value="">{{t $lang "messages.any_operator"}}</option>
     {{range list "TELKOMSEL" "INDOSAT" "XL" "AXIS" "TRI" "SMARTFREN" "UNKNOWN"}}
       <option value="{{.}}" {{if eq . $.Operator}}selected{{end}}>{{.}}</option>
     {{end}}
@@ -24,28 +25,7 @@
   <div class="loglist" id="rows">
     {{template "rows" .}}
   </div>
-  <aside id="drawer" class="drawer"><p class="muted">Select a message to see its lifecycle.</p></aside>
+  <aside id="drawer" class="drawer"><p class="muted">{{t $lang "messages.select_hint"}}</p></aside>
 </div>
 <div id="drawer-scrim" class="drawer-scrim"></div>
-
-<script>
-(function () {
-  var mobile = function () { return window.matchMedia('(max-width: 1040px)').matches; };
-  var drawer = function () { return document.getElementById('drawer'); };
-  var scrim = document.getElementById('drawer-scrim');
-  window.wsmsCloseSheet = function () {
-    drawer().classList.remove('sheet-open');
-    if (scrim) scrim.classList.remove('show');
-  };
-  // On mobile, opening a message shows the detail as a bottom-sheet dialog.
-  document.body.addEventListener('htmx:afterSwap', function (e) {
-    if (e.detail && e.detail.target && e.detail.target.id === 'drawer' && mobile()) {
-      drawer().classList.add('sheet-open');
-      if (scrim) scrim.classList.add('show');
-      drawer().scrollTop = 0;
-    }
-  });
-  if (scrim) scrim.addEventListener('click', window.wsmsCloseSheet);
-})();
-</script>
 {{end}}

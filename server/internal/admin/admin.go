@@ -20,12 +20,8 @@ import (
 
 const cookieName = "wsms_admin"
 
-type session struct {
-	userID   string
-	username string
-	role     string
-	expires  time.Time
-}
+// sessionTTL is how long a persisted admin session stays valid.
+const sessionTTL = 30 * 24 * time.Hour
 
 type Server struct {
 	db     *gorm.DB
@@ -33,17 +29,13 @@ type Server struct {
 	cfg    config.Config
 	engine *router.Engine
 
-	mu       sync.RWMutex
-	sessions map[string]session
-
 	flashMu sync.Mutex
 	flashes map[string]flashItem
 }
 
 func New(db *gorm.DB, hub *ws.Hub, cfg config.Config, engine *router.Engine) *Server {
 	buildTemplates()
-	return &Server{db: db, hub: hub, cfg: cfg, engine: engine,
-		sessions: map[string]session{}, flashes: map[string]flashItem{}}
+	return &Server{db: db, hub: hub, cfg: cfg, engine: engine, flashes: map[string]flashItem{}}
 }
 
 // Mount wires the admin routes onto the given gin engine and bootstraps the owner user.
@@ -113,12 +105,10 @@ func (s *Server) bootstrapOwner() {
 func (s *Server) requireSession(c *gin.Context) {
 	tok, err := c.Cookie(cookieName)
 	if err == nil {
-		s.mu.RLock()
-		sess, ok := s.sessions[tok]
-		s.mu.RUnlock()
-		if ok && sess.expires.After(time.Now()) {
-			c.Set("admin_user", gin.H{"username": sess.username, "role": sess.role, "id": sess.userID})
-			c.Set("role", sess.role)
+		var sess models.AdminSession
+		if s.db.Where("token_hash = ? AND expires_at > now()", secret.SHA256Hex(tok)).First(&sess).Error == nil {
+			c.Set("admin_user", gin.H{"username": sess.Username, "role": sess.Role, "id": sess.UserID})
+			c.Set("role", sess.Role)
 			c.Next()
 			return
 		}

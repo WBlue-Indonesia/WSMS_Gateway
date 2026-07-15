@@ -23,24 +23,27 @@ func (s *Server) doLogin(c *gin.Context) {
 		return
 	}
 	tok, _ := secret.RandomToken(24)
-	s.mu.Lock()
-	s.sessions[tok] = session{userID: u.ID, username: u.Username, role: u.Role, expires: time.Now().Add(12 * time.Hour)}
-	s.mu.Unlock()
-
 	now := time.Now()
+	// Persist the session in the DB so it survives restarts/redeploys and the same user
+	// can be signed in from any number of devices at once (each login is its own row).
+	s.db.Create(&models.AdminSession{
+		TokenHash: secret.SHA256Hex(tok), UserID: u.ID, Username: u.Username, Role: u.Role,
+		SourceIP: c.ClientIP(), UserAgent: c.GetHeader("User-Agent"),
+		ExpiresAt: now.Add(sessionTTL), CreatedAt: now,
+	})
 	s.db.Model(&models.AdminUser{}).Where("id = ?", u.ID).Update("last_login_at", now)
 
-	secure := c.Request.TLS != nil
-	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie(cookieName, tok, int((12 * time.Hour).Seconds()), "/admin", "", secure, true)
+	// Behind a TLS-terminating proxy (Cloudflare/nginx) the Go server sees plain HTTP,
+	// so also honor X-Forwarded-Proto. Lax lets the cookie ride top-level navigations.
+	secure := c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(cookieName, tok, int(sessionTTL.Seconds()), "/admin", "", secure, true)
 	c.Redirect(http.StatusSeeOther, "/admin")
 }
 
 func (s *Server) doLogout(c *gin.Context) {
 	if tok, err := c.Cookie(cookieName); err == nil {
-		s.mu.Lock()
-		delete(s.sessions, tok)
-		s.mu.Unlock()
+		s.db.Delete(&models.AdminSession{}, "token_hash = ?", secret.SHA256Hex(tok))
 	}
 	c.SetCookie(cookieName, "", -1, "/admin", "", false, true)
 	c.Redirect(http.StatusSeeOther, "/admin/login")

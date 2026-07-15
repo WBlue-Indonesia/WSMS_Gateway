@@ -153,8 +153,8 @@ type APIKey struct {
 	ClientID         string     `gorm:"type:uuid;index;not null" json:"client_id"`
 	Prefix           string     `gorm:"index;not null" json:"prefix"` // public lookup id, e.g. "wsms_ab12"
 	Hash             string     `gorm:"not null" json:"-"`            // argon2id(secret)
-	Scopes           string     `gorm:"not null" json:"scopes"`      // csv: messages:write,messages:read,...
-	SigningSecretEnc []byte     `json:"-"`                           // AES-GCM ciphertext, null unless signing enabled
+	Scopes           string     `gorm:"not null" json:"scopes"`       // csv: messages:write,messages:read,...
+	SigningSecretEnc []byte     `json:"-"`                            // AES-GCM ciphertext, null unless signing enabled
 	Active           bool       `gorm:"not null;default:true" json:"active"`
 	LastUsedAt       *time.Time `json:"last_used_at,omitempty"`
 	SoftBase
@@ -166,8 +166,8 @@ type Device struct {
 	Status     DeviceStatus `gorm:"type:text;not null;default:'ENROLLED'" json:"status"`
 	LastSeenAt *time.Time   `json:"last_seen_at,omitempty"`
 	AppVersion string       `json:"app_version,omitempty"`
-	PushToken  string       `json:"-"` // FCM token for wake
-	SecretHash string       `json:"-"` // argon2id of the device's WS bearer secret (issued at enrollment)
+	PushToken  string       `json:"-"`                                     // FCM token for wake
+	SecretHash string       `json:"-"`                                     // argon2id of the device's WS bearer secret (issued at enrollment)
 	WakeMisses int          `gorm:"not null;default:0" json:"wake_misses"` // F6: consecutive failed wakes → "needs manual relaunch"
 	SoftBase
 }
@@ -181,7 +181,7 @@ type Sim struct {
 	SubscriptionID int        `gorm:"not null" json:"subscription_id"` // Android SubscriptionInfo id, device-local
 	Operator       Operator   `gorm:"type:text;index;not null;default:'UNKNOWN'" json:"operator"`
 	OperatorLocked bool       `gorm:"not null;default:false" json:"operator_locked"` // manual override wins over carrierName
-	MSISDN         string     `json:"msisdn,omitempty"`                               // canonical +62, often null from Android
+	MSISDN         string     `json:"msisdn,omitempty"`                              // canonical +62, often null from Android
 	Status         SimStatus  `gorm:"type:text;not null;default:'UNKNOWN'" json:"status"`
 	DailyQuota     int        `gorm:"not null;default:200" json:"daily_quota"`  // segments/day
 	SentToday      int        `gorm:"not null;default:0" json:"sent_today"`     // segments (single unit — amendment F2)
@@ -264,6 +264,20 @@ type AdminUser struct {
 	SoftBase
 }
 
+// AdminSession is a persisted admin console login. Stored in the DB (not in memory) so
+// sessions survive server restarts/redeploys and a user can be logged in from any number
+// of devices/places at once — each login is its own row, keyed by the token's hash.
+type AdminSession struct {
+	TokenHash string    `gorm:"primaryKey"` // sha256(session token); the plaintext lives only in the cookie
+	UserID    string    `gorm:"type:uuid;index;not null" json:"user_id"`
+	Username  string    `gorm:"not null" json:"username"`
+	Role      string    `gorm:"not null" json:"role"`
+	SourceIP  string    `json:"source_ip"`
+	UserAgent string    `json:"user_agent"`
+	ExpiresAt time.Time `gorm:"index;not null" json:"expires_at"`
+	CreatedAt time.Time `gorm:"not null;default:now()" json:"created_at"`
+}
+
 // AdminAudit is the administrative audit trail — a superset of docs/06 §1.9 that adds
 // actor_role and reason (docs/07 §8). Records privileged actions and PII reveals.
 type AdminAudit struct {
@@ -285,6 +299,6 @@ func AllModels() []any {
 	return []any{
 		&Client{}, &APIKey{}, &Device{}, &Sim{}, &Message{}, &MessageEvent{},
 		&MessageSend{}, &OperatorPrefix{}, &EnrollmentToken{},
-		&AdminUser{}, &AdminAudit{}, &WebhookDelivery{},
+		&AdminUser{}, &AdminSession{}, &AdminAudit{}, &WebhookDelivery{},
 	}
 }

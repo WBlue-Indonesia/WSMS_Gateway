@@ -2,6 +2,49 @@
 <h1>Fleet</h1>
 <p class="muted">Devices and their SIMs · quota is segments/day · deleting a device unlinks the phone immediately</p>
 
+{{if .CanMutate}}
+<div class="card routing-card">
+  <div class="device-head">
+    <div>
+      <strong>Default SIM routing</strong>
+      <span class="muted">how a SIM is picked when the recipient's operator isn't one you own — or the on-net SIM is out of quota</span>
+    </div>
+  </div>
+  <form method="post" action="/admin/settings/routing" class="routing-form">
+    <label>Fallback
+      <select name="mode" aria-label="Fallback mode">
+        <option value="LEAST_LOADED" {{if eq .Routing.Mode "LEAST_LOADED"}}selected{{end}}>Least loaded — spread evenly</option>
+        <option value="DEFAULT_OP" {{if eq .Routing.Mode "DEFAULT_OP"}}selected{{end}}>Default operator</option>
+        <option value="RANDOM" {{if eq .Routing.Mode "RANDOM"}}selected{{end}}>Random</option>
+      </select>
+    </label>
+    <label class="op-field">Operator
+      <select name="operator" aria-label="Default operator">
+        {{range list "TELKOMSEL" "INDOSAT" "XL" "AXIS" "TRI" "SMARTFREN"}}
+          <option value="{{.}}" {{if eq . $.Routing.Operator}}selected{{end}}>{{.}}</option>
+        {{end}}
+      </select>
+    </label>
+    <button type="submit">Save</button>
+  </form>
+  <p class="muted routing-hint">
+    {{if .Routing.Owned}}You own READY SIMs on: <strong>{{range $i, $o := .Routing.Owned}}{{if $i}}, {{end}}{{$o}}{{end}}</strong>. {{end}}
+    <em>Least loaded</em> spreads across every SIM · <em>Default operator</em> forces off-net numbers onto the chosen network (then any SIM if it's out of quota) · <em>Random</em> picks a SIM at random.
+  </p>
+</div>
+<script>
+(function () {
+  var f = document.querySelector('.routing-form');
+  if (!f) return;
+  var mode = f.querySelector('[name=mode]');
+  var opField = f.querySelector('.op-field');
+  function sync() { opField.style.display = (mode.value === 'DEFAULT_OP') ? '' : 'none'; }
+  mode.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{{end}}
+
 {{range .Devices}}
 <div class="card device">
   <div class="device-head">

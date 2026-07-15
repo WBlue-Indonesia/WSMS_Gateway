@@ -122,6 +122,44 @@ func (s *Server) simQuota(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/admin/fleet")
 }
 
+// saveRouting persists the global routing fallback policy (default-SIM behavior) and
+// applies it to the live dispatcher. Governs how a SIM is chosen for off-net numbers —
+// those whose operator you don't own a SIM for, or when the on-net SIM is out of quota.
+func (s *Server) saveRouting(c *gin.Context) {
+	if !s.canMutate(c) {
+		c.String(http.StatusForbidden, "not permitted")
+		return
+	}
+	mode := models.FallbackMode(strings.TrimSpace(c.PostForm("mode")))
+	op := models.Operator(strings.TrimSpace(c.PostForm("operator")))
+	switch mode {
+	case models.FallbackLeastLoaded, models.FallbackRandom:
+		op = models.OpUnknown // operator only meaningful for DEFAULT_OP
+	case models.FallbackDefaultOp:
+		if !validOperator(op) {
+			c.Redirect(http.StatusSeeOther, "/admin/fleet")
+			return
+		}
+	default:
+		c.Redirect(http.StatusSeeOther, "/admin/fleet")
+		return
+	}
+	s.db.Model(&models.AppSettings{}).Where("id = ?", models.SettingsID).
+		Updates(map[string]any{"fallback_mode": mode, "fallback_operator": op, "updated_at": time.Now()})
+	s.engine.SetFallback(mode, op)
+	s.audit(c, "routing.fallback", "settings", "1", string(mode)+" "+string(op))
+	c.Redirect(http.StatusSeeOther, "/admin/fleet")
+}
+
+// validOperator reports whether op is a real (non-UNKNOWN) mobile operator.
+func validOperator(op models.Operator) bool {
+	switch op {
+	case models.OpTelkomsel, models.OpIndosat, models.OpXL, models.OpAxis, models.OpTri, models.OpSmartfren:
+		return true
+	}
+	return false
+}
+
 // messageCancel cancels a message and re-renders the detail drawer (htmx).
 func (s *Server) messageCancel(c *gin.Context) {
 	if !s.canMutate(c) {

@@ -37,7 +37,18 @@ func Open(dsn string, debug bool) (*gorm.DB, error) {
 	if err := seedPrefixes(db); err != nil {
 		return nil, err
 	}
+	if err := ensureSettings(db); err != nil {
+		return nil, err
+	}
 	return db, nil
+}
+
+// ensureSettings creates the singleton settings row (id=SettingsID) with defaults if absent.
+func ensureSettings(db *gorm.DB) error {
+	row := models.AppSettings{
+		ID: models.SettingsID, FallbackMode: models.FallbackLeastLoaded, FallbackOperator: models.OpUnknown,
+	}
+	return db.Where(models.AppSettings{ID: models.SettingsID}).FirstOrCreate(&row).Error
 }
 
 // ensureDedupIndex enforces per-client idempotency: dedup_key unique within a client.

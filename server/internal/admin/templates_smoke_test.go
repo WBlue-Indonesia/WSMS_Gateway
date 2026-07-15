@@ -23,7 +23,8 @@ func TestTemplatesParseAndRender(t *testing.T) {
 			"Operators": []tkv{{K: "XL", N: 2}}, "OpMax": int64(2), "OpReady": []tkv{{K: "XL", N: 1}},
 			"OpReadyMax": int64(1), "Attention": int64(0)},
 		"clients":    {"Clients": nil, "Scopes": knownScopes, "CanMutate": true},
-		"fleet":      {"Devices": nil, "CanMutate": true},
+		"fleet": {"Devices": nil, "CanMutate": true, "Routing": map[string]any{
+			"Mode": "DEFAULT_OP", "Operator": "TRI", "Owned": []string{"TRI", "TELKOMSEL"}}},
 		"enrollment": {"Tokens": nil, "CanMutate": true},
 		"compose":    {"Error": "", "Sent": ""},
 		"messages":   {"Messages": nil, "Q": "", "Status": "", "Operator": ""},

@@ -66,6 +66,7 @@ func (s *Server) Mount(r *gin.Engine) {
 	a.POST("/sims/:id/enable", s.simEnable)
 	a.POST("/sims/:id/cooldown", s.simCooldown)
 	a.POST("/sims/:id/quota", s.simQuota)
+	a.POST("/settings/routing", s.saveRouting)
 	a.POST("/devices/:id/rescan", s.deviceRescan)
 	a.POST("/devices/:id/rename", s.deviceRename)
 	a.POST("/devices/:id/delete", s.deviceDelete)

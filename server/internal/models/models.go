@@ -78,6 +78,17 @@ const (
 	PolicyAny         RoutingPolicy = "ANY"           // no operator preference, purely load-balanced
 )
 
+// FallbackMode is the global rule for picking a SIM when the router can't (or isn't
+// asked to) send on-net — i.e. the recipient's operator isn't one you own a SIM for, or
+// the on-net SIM has no capacity. Tuned from the admin console (Fleet › Default SIM routing).
+type FallbackMode string
+
+const (
+	FallbackLeastLoaded FallbackMode = "LEAST_LOADED" // spread across any READY SIM, least-loaded first (default)
+	FallbackDefaultOp   FallbackMode = "DEFAULT_OP"   // prefer a chosen operator (FallbackOperator), then any READY SIM
+	FallbackRandom      FallbackMode = "RANDOM"       // pick a random READY SIM
+)
+
 // EventType — message_events vocabulary.
 type EventType string
 
@@ -241,6 +252,18 @@ type OperatorPrefix struct {
 	Operator Operator `gorm:"type:text;not null" json:"operator"`
 }
 
+// SettingsID is the fixed primary key of the singleton AppSettings row.
+const SettingsID = 1
+
+// AppSettings is a singleton row (ID = SettingsID) holding operator-tunable gateway
+// settings. Currently just the global routing fallback policy (see FallbackMode).
+type AppSettings struct {
+	ID               int          `gorm:"primaryKey" json:"id"` // always SettingsID
+	FallbackMode     FallbackMode `gorm:"type:text;not null;default:'LEAST_LOADED'" json:"fallback_mode"`
+	FallbackOperator Operator     `gorm:"type:text;not null;default:'UNKNOWN'" json:"fallback_operator"`
+	UpdatedAt        time.Time    `gorm:"not null;default:now()" json:"updated_at"`
+}
+
 type EnrollmentToken struct {
 	ID        string     `gorm:"type:uuid;primaryKey" json:"id"`
 	TokenHash string     `gorm:"index;not null" json:"-"` // sha256(token)
@@ -298,7 +321,7 @@ type AdminAudit struct {
 func AllModels() []any {
 	return []any{
 		&Client{}, &APIKey{}, &Device{}, &Sim{}, &Message{}, &MessageEvent{},
-		&MessageSend{}, &OperatorPrefix{}, &EnrollmentToken{},
+		&MessageSend{}, &OperatorPrefix{}, &EnrollmentToken{}, &AppSettings{},
 		&AdminUser{}, &AdminSession{}, &AdminAudit{}, &WebhookDelivery{},
 	}
 }

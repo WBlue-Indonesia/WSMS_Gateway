@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/nizwar/wsms-gateway/server/internal/models"
 	"gorm.io/gorm"
@@ -13,17 +14,56 @@ import (
 // ErrNoCapacity means no eligible SIM could be atomically reserved for this message.
 var ErrNoCapacity = errors.New("no eligible SIM available")
 
+// ordering selects the ranking of eligible SIMs inside reserve.
+type ordering int
+
+const (
+	orderLeastLoaded ordering = iota // spread load: least-used, healthiest, LRU first
+	orderRandom                      // pick a random eligible SIM
+)
+
+// fallbackConfig is the off-net routing policy, cached atomically so a running
+// dispatcher picks up admin changes without a per-message DB read.
+type fallbackConfig struct {
+	mode models.FallbackMode
+	op   models.Operator
+}
+
 // Engine selects a SIM for a message and reserves its quota atomically.
 type Engine struct {
 	db       *gorm.DB
 	prefixes map[string]models.Operator
+	fb       atomic.Pointer[fallbackConfig]
 }
 
 func New(db *gorm.DB, prefixes map[string]models.Operator) *Engine {
 	if prefixes == nil {
 		prefixes = DefaultPrefixes
 	}
-	return &Engine{db: db, prefixes: prefixes}
+	e := &Engine{db: db, prefixes: prefixes}
+	e.fb.Store(&fallbackConfig{mode: models.FallbackLeastLoaded, op: models.OpUnknown})
+	e.loadFallback()
+	return e
+}
+
+// loadFallback reads the persisted routing fallback setting into the atomic cache.
+func (e *Engine) loadFallback() {
+	var s models.AppSettings
+	if err := e.db.Where("id = ?", models.SettingsID).First(&s).Error; err == nil {
+		e.fb.Store(&fallbackConfig{mode: s.FallbackMode, op: s.FallbackOperator})
+	}
+}
+
+// SetFallback updates the in-memory routing fallback policy. Call it after persisting
+// the change so the live dispatcher applies it immediately.
+func (e *Engine) SetFallback(mode models.FallbackMode, op models.Operator) {
+	e.fb.Store(&fallbackConfig{mode: mode, op: op})
+}
+
+// Fallback returns the current routing fallback policy (for the admin console).
+func (e *Engine) Fallback() (models.FallbackMode, models.Operator) {
+	c := e.fb.Load()
+	return c.mode, c.op
 }
 
 // Detect resolves the operator of a canonical MSISDN using the engine's prefix table.
@@ -56,7 +96,7 @@ func (e *Engine) Route(ctx context.Context, msg *models.Message) (*Choice, error
 	tryFallback := msg.RoutingPolicy != models.PolicyOnNetStrict
 
 	if tryOnNet {
-		if c, err := e.reserve(ctx, []models.Operator{msg.TargetOperator}, seg); err == nil {
+		if c, err := e.reserve(ctx, []models.Operator{msg.TargetOperator}, seg, orderLeastLoaded); err == nil {
 			c.OnNet = true
 			return c, nil
 		} else if !errors.Is(err, ErrNoCapacity) {
@@ -64,7 +104,22 @@ func (e *Engine) Route(ctx context.Context, msg *models.Message) (*Choice, error
 		}
 	}
 	if tryFallback {
-		if c, err := e.reserve(ctx, nil, seg); err == nil {
+		fb := e.fb.Load()
+		// Operator-configured default: prefer the chosen network for off-net numbers first.
+		if fb.mode == models.FallbackDefaultOp && fb.op != models.OpUnknown {
+			if c, err := e.reserve(ctx, []models.Operator{fb.op}, seg, orderLeastLoaded); err == nil {
+				c.OnNet = c.Operator == msg.TargetOperator
+				return c, nil
+			} else if !errors.Is(err, ErrNoCapacity) {
+				return nil, err
+			}
+		}
+		// Last resort across any READY SIM. RANDOM shuffles; otherwise least-loaded.
+		ord := orderLeastLoaded
+		if fb.mode == models.FallbackRandom {
+			ord = orderRandom
+		}
+		if c, err := e.reserve(ctx, nil, seg, ord); err == nil {
 			c.OnNet = c.Operator == msg.TargetOperator
 			return c, nil
 		} else if !errors.Is(err, ErrNoCapacity) {
@@ -74,8 +129,9 @@ func (e *Engine) Route(ctx context.Context, msg *models.Message) (*Choice, error
 	return nil, ErrNoCapacity
 }
 
-// reserve runs the atomic conditional UPDATE. operators==nil means "any operator".
-func (e *Engine) reserve(ctx context.Context, operators []models.Operator, seg int) (*Choice, error) {
+// reserve runs the atomic conditional UPDATE. operators==nil means "any operator";
+// order selects how eligible SIMs are ranked (least-loaded vs. random).
+func (e *Engine) reserve(ctx context.Context, operators []models.Operator, seg int, order ordering) (*Choice, error) {
 	var opClause string
 	args := []any{seg, seg} // sent_today+=seg, sent_window+=seg in SET
 	// selection args start after the two SET args
@@ -89,8 +145,13 @@ func (e *Engine) reserve(ctx context.Context, operators []models.Operator, seg i
 		opClause = "AND s.operator IN (" + strings.Join(placeholders, ",") + ")"
 	}
 
-	// Ranking: least-loaded first (sent_window), then healthiest, then least-recently-used.
-	// Pacing (min_gap_ms) and quota are enforced in the WHERE so a reserved SIM is always sendable.
+	// Ranking: least-loaded first (sent_window), then healthiest, then least-recently-used —
+	// or a uniform random pick when the fallback policy is RANDOM. Either way, pacing
+	// (min_gap_ms) and quota are enforced in the WHERE so a reserved SIM is always sendable.
+	orderClause := "s.sent_window ASC, s.health_score DESC, s.last_used_at ASC NULLS FIRST"
+	if order == orderRandom {
+		orderClause = "random()"
+	}
 	sql := fmt.Sprintf(`
 UPDATE sims SET
     sent_today  = sent_today + ?,
@@ -109,11 +170,11 @@ WHERE id = (
       AND (s.last_used_at IS NULL OR s.last_used_at < now() - (s.min_gap_ms * interval '1 millisecond'))
       AND s.sent_today + ? <= s.daily_quota
       %s
-    ORDER BY s.sent_window ASC, s.health_score DESC, s.last_used_at ASC NULLS FIRST
+    ORDER BY %s
     FOR UPDATE OF s SKIP LOCKED
     LIMIT 1
 )
-RETURNING id, device_id, operator, subscription_id`, opClause)
+RETURNING id, device_id, operator, subscription_id`, opClause, orderClause)
 
 	args = append(args, selArgs...)
 

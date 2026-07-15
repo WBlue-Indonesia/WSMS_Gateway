@@ -283,7 +283,21 @@ func (s *Server) fleet(c *gin.Context) {
 		s.db.Where("device_id = ?", d.ID).Order("slot").Find(&sims)
 		views = append(views, deviceView{D: d, Online: s.hub.Online(d.ID), Sims: sims})
 	}
-	renderPage(c, "fleet", gin.H{"Devices": views, "CanMutate": s.canMutate(c)})
+	fbMode, fbOp := s.engine.Fallback()
+	// operators we actually own a READY SIM for — guides the default-operator choice.
+	var owned []models.Operator
+	s.db.Model(&models.Sim{}).
+		Where("deleted_at IS NULL AND status = ?", models.SimReady).
+		Distinct().Order("operator").Pluck("operator", &owned)
+	renderPage(c, "fleet", gin.H{
+		"Devices":   views,
+		"CanMutate": s.canMutate(c),
+		"Routing": gin.H{
+			"Mode":     string(fbMode),
+			"Operator": string(fbOp),
+			"Owned":    owned,
+		},
+	})
 }
 
 // ---- Enrollment ----

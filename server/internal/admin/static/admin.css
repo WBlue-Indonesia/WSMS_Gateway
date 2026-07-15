@@ -248,6 +248,25 @@ tr.logrow td[data-label="Time"] { white-space: nowrap; }
 .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; background: var(--muted); }
 .st-dot.ok { background: var(--ok); } .st-dot.bad { background: var(--bad); } .st-dot.warn { background: var(--warn); } .st-dot.muted { background: var(--muted); }
 
+/* status + seg as compact icons in the log */
+.sicon { display: inline-flex; align-items: center; }
+.sicon svg { width: 18px; height: 18px; }
+.sicon.ok { color: var(--ok); } .sicon.bad { color: var(--bad); } .sicon.warn { color: var(--warn); } .sicon.muted { color: var(--muted); }
+.seg .segico { width: 15px; height: 15px; color: var(--muted); vertical-align: -3px; margin-right: 5px; }
+
+/* compact log rows */
+table.grid.log td { padding: 8px 12px; }
+table.grid.log td.time { font-size: 12px; white-space: nowrap; }
+table.grid.log td.to { font-weight: 600; }
+table.grid.log td.op { font-size: 12px; color: var(--muted); }
+table.grid.log td.stat { text-align: center; width: 44px; }
+
+/* message detail as a bottom-sheet dialog on mobile (hidden helpers on desktop) */
+.drawer-scrim { display: none; }
+.dh-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sheet-close { display: none; }
+@keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
 /* timeline */
 .timeline { list-style: none; padding-left: 0; margin: 0; position: relative; }
 .timeline li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0 9px 20px; position: relative; }
@@ -345,8 +364,23 @@ table.params td[data-label="Description"] { color: var(--fg2); }
    ========================================================================== */
 @media (max-width: 1040px) {
   .split { grid-template-columns: 1fr; }
-  .drawer { position: static; }
   .cols { grid-template-columns: 1fr; }
+  /* the message detail is hidden until a row is tapped, then slides up as a dialog */
+  .drawer { display: none; position: static; }
+  .drawer.sheet-open {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 60;
+    max-height: 86vh; overflow-y: auto;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg); padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    animation: sheetUp .26s cubic-bezier(.4,0,.2,1);
+  }
+  .drawer-scrim.show { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(4,10,22,.5); }
+  .sheet-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+    flex: none; border-radius: 9px; background: var(--panel2); border: 1px solid var(--line); color: var(--fg); font-size: 14px; }
+  .drawer-head { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  /* adaptive search: full-width query, two half-width selects */
+  .msg-filters input[type=search] { flex: 1 1 100%; }
+  .msg-filters select { flex: 1 1 calc(50% - 5px); }
 }
 
 /* ---- Mobile: hide rail, show app bar + bottom tabs -------------------- */

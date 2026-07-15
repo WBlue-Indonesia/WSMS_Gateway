@@ -1,7 +1,10 @@
 {{define "message_detail"}}
 <div class="drawer-head">
-  <h2>Message</h2>
-  <span class="mono muted">{{.M.ID}}</span>
+  <div class="dh-title">
+    <h2>Message</h2>
+    <span class="mono muted">{{.M.ID}}</span>
+  </div>
+  <button type="button" class="sheet-close" onclick="wsmsCloseSheet()" aria-label="Close">✕</button>
 </div>
 
 <dl class="kv">

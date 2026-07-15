@@ -82,8 +82,9 @@ var funcs = template.FuncMap{
 		}
 		return p
 	},
-	"lower":     strings.ToLower,
-	"sparkline": sparkline,
+	"lower":      strings.ToLower,
+	"sparkline":  sparkline,
+	"statusIcon": statusIcon,
 	// scopeField maps a scope like "messages:write" to its form field name
 	// "scope_messages_write" (matches createKey's parser).
 	"scopeField": func(s string) string { return "scope_" + strings.ReplaceAll(s, ":", "_") },
@@ -187,6 +188,30 @@ func since(t *time.Time) string {
 	default:
 		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
 	}
+}
+
+// statusIcon renders a compact, colored inline SVG for a message status (with a title
+// tooltip) — used in the message log instead of a text pill.
+func statusIcon(status string) template.HTML {
+	kind := statusBadge(status)
+	var d string
+	switch status {
+	case "DELIVERED":
+		d = `<path d="M1.5 12.5 6 17 14 8"/><path d="m12 16 2.5 2.5L23 8"/>` // double check
+	case "SENT":
+		d = `<path d="M5 13l4 4L19 7"/>` // check
+	case "SENT_UNCONFIRMED":
+		d = `<path d="M5 13l4 4L19 7" stroke-dasharray="3 2.5"/>` // dashed check
+	case "FAILED", "EXPIRED":
+		d = `<path d="M18 6 6 18M6 6l12 12"/>` // x
+	case "CANCELLED":
+		d = `<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>` // no-entry
+	default: // QUEUED, ROUTING, DISPATCHED, AWAITING_ACK
+		d = `<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>` // clock (in flight)
+	}
+	return template.HTML(fmt.Sprintf(
+		`<span class="sicon %s" title="%s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">%s</svg></span>`,
+		kind, status, d))
 }
 
 func statusBadge(status string) string {

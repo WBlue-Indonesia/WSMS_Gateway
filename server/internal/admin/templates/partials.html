@@ -3,14 +3,13 @@
 {{define "rows"}}
 {{range .Messages}}
   <tr class="logrow" hx-get="/admin/messages/{{.ID}}" hx-target="#drawer" hx-swap="innerHTML">
-    <td class="mono" data-label="Time"><span class="st-dot {{badge (printf "%s" .Status)}}"></span>{{fmtTime .CreatedAt}}</td>
-    <td class="mono" data-label="To">{{maskMSISDN .TargetMSISDN}}</td>
-    <td data-label="Operator"><span class="pill muted plain">{{.TargetOperator}}</span></td>
-    <td data-label="Status">{{template "statusPill" (printf "%s" .Status)}}</td>
-    <td class="num" data-label="Seg">{{.Segments}}</td>
-    <td class="mono muted" data-label="ID">{{shortID .ID}}</td>
+    <td class="mono time" data-label="Time"><span class="st-dot {{badge (printf "%s" .Status)}}"></span>{{fmtTime .CreatedAt}}</td>
+    <td class="mono to" data-label="To">{{.TargetMSISDN}}</td>
+    <td class="op" data-label="Operator">{{.TargetOperator}}</td>
+    <td class="stat" data-label="Status">{{statusIcon (printf "%s" .Status)}}</td>
+    <td class="num seg" data-label="Seg"><svg class="segico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{{.Segments}}</td>
   </tr>
 {{else}}
-  <tr><td colspan="6" class="muted">no messages match</td></tr>
+  <tr><td colspan="5" class="muted">no messages match</td></tr>
 {{end}}
 {{end}}

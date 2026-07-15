@@ -328,7 +328,7 @@ tr.logrow td[data-label="Time"] { white-space: nowrap; }
 .scope-check input { width: auto; margin: 0; }
 
 /* api docs */
-.body-sample { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; overflow-x: auto; font-size: 12.5px; }
+.body-sample { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; overflow-x: auto; max-width: 100%; font-size: 12.5px; }
 .method { font-weight: 700; font-size: 10.5px; padding: 3px 8px; border-radius: 6px; letter-spacing: .03em; }
 .method.get { background: var(--ok-soft); color: var(--ok); }
 .method.post { background: var(--accent-soft); color: var(--accent); }
@@ -476,6 +476,12 @@ table.params td[data-label="Description"] { color: var(--fg2); }
   .callout.pair { justify-content: center; }
 
   .ep-io { grid-template-columns: 1fr; }
+  /* wrap code blocks on mobile so long JSON/curl lines don't overflow (body clips X) */
+  .body-sample { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+  .doc-nav { gap: 6px; }
+  .doc-nav a { padding: 5px 10px; font-size: 12px; }
+  .endpoint { padding: 14px; }
+  .ep-path { font-size: 14px; }
   .life { flex-direction: column; align-items: flex-start; gap: 3px; }
   .life > .pill { min-width: 0; }
   .doc-section > h2 { font-size: 17px; }

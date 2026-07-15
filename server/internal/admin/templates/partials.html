@@ -2,14 +2,18 @@
 
 {{define "rows"}}
 {{range .Messages}}
-  <tr class="logrow" hx-get="/admin/messages/{{.ID}}" hx-target="#drawer" hx-swap="innerHTML">
-    <td class="mono time" data-label="Time"><span class="st-dot {{badge (printf "%s" .Status)}}"></span>{{fmtTime .CreatedAt}}</td>
-    <td class="mono to" data-label="To">{{.TargetMSISDN}}</td>
-    <td class="op" data-label="Operator">{{.TargetOperator}}</td>
-    <td class="stat" data-label="Status">{{statusIcon (printf "%s" .Status)}}</td>
-    <td class="num seg" data-label="Seg"><svg class="segico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{{.Segments}}</td>
-  </tr>
+  <div class="logitem" hx-get="/admin/messages/{{.ID}}" hx-target="#drawer" hx-swap="innerHTML" role="button" tabindex="0">
+    <span class="li-lead {{badge (printf "%s" .Status)}}">{{statusIcon (printf "%s" .Status)}}</span>
+    <div class="li-body">
+      <div class="li-title mono">{{.TargetMSISDN}}</div>
+      <div class="li-sub">{{.TargetOperator}}</div>
+    </div>
+    <div class="li-trail">
+      <span class="li-time mono">{{fmtShort .CreatedAt}}</span>
+      <svg class="li-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    </div>
+  </div>
 {{else}}
-  <tr><td colspan="5" class="muted">no messages match</td></tr>
+  <div class="logempty muted">no messages match</div>
 {{end}}
 {{end}}

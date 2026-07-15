@@ -62,6 +62,12 @@ var funcs = template.FuncMap{
 		}
 		return t.Local().Format("2006-01-02 15:04")
 	},
+	"fmtShort": func(t time.Time) string {
+		if t.IsZero() {
+			return "—"
+		}
+		return t.Local().Format("01-02 15:04")
+	},
 	"since": since,
 	"badge": statusBadge,
 	"pct": func(n, d int64) string {

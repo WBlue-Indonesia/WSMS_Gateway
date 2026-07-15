@@ -248,18 +248,28 @@ tr.logrow td[data-label="Time"] { white-space: nowrap; }
 .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; background: var(--muted); }
 .st-dot.ok { background: var(--ok); } .st-dot.bad { background: var(--bad); } .st-dot.warn { background: var(--warn); } .st-dot.muted { background: var(--muted); }
 
-/* status + seg as compact icons in the log */
+/* status icon color (the ListTile leading) */
 .sicon { display: inline-flex; align-items: center; }
-.sicon svg { width: 18px; height: 18px; }
+.sicon svg { width: 19px; height: 19px; }
 .sicon.ok { color: var(--ok); } .sicon.bad { color: var(--bad); } .sicon.warn { color: var(--warn); } .sicon.muted { color: var(--muted); }
-.seg .segico { width: 15px; height: 15px; color: var(--muted); vertical-align: -3px; margin-right: 5px; }
 
-/* compact log rows */
-table.grid.log td { padding: 8px 12px; }
-table.grid.log td.time { font-size: 12px; white-space: nowrap; }
-table.grid.log td.to { font-weight: 600; }
-table.grid.log td.op { font-size: 12px; color: var(--muted); }
-table.grid.log td.stat { text-align: center; width: 44px; }
+/* message log — Flutter-style ListTile rows (leading · title/subtitle · trailing) */
+.loglist { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); min-width: 0; }
+.logitem { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+  cursor: pointer; transition: background .12s; }
+.logitem:last-child { border-bottom: none; }
+.logitem:hover { background: var(--panel2); }
+.logitem:focus-visible { background: var(--panel2); outline: none; box-shadow: inset 0 0 0 2px var(--accent2); }
+.li-lead { width: 36px; height: 36px; flex: none; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; }
+.li-lead.ok { background: var(--ok-soft); } .li-lead.bad { background: var(--bad-soft); } .li-lead.warn { background: var(--warn-soft); } .li-lead.muted { background: var(--panel3); }
+.li-body { flex: 1; min-width: 0; }
+.li-title { font-weight: 650; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.li-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.li-trail { flex: none; display: flex; align-items: center; gap: 4px; color: var(--muted); }
+.li-time { font-size: 11.5px; white-space: nowrap; }
+.li-chev { width: 16px; height: 16px; opacity: .55; }
+.logempty { padding: 22px 14px; text-align: center; }
 
 /* message detail as a bottom-sheet dialog on mobile (hidden helpers on desktop) */
 .drawer-scrim { display: none; }

@@ -18,3 +18,9 @@ BOOTSTRAP_CREDENTIALS.txt
 *.jks
 *.keystore
 key.properties
+
+# graphify generated code graph (local only)
+graphify-out/
+
+# Kotlin/Gradle build scratch
+.kotlin/

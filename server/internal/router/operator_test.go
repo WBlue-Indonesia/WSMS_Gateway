@@ -16,10 +16,16 @@ func TestNormalizeMSISDN(t *testing.T) {
 		{"+62 812 3456 7890", "+6281234567890", true},
 		{"6281234567890", "+6281234567890", true},
 		{"81234567890", "+6281234567890", true},
-		{"0812 3456 789", "+628123456789", true}, // spaces stripped
-		{"1234", "", false},                     // not Indonesian mobile
-		{"+18005551234", "", false},             // US number
+		{"0812 3456 789", "+628123456789", true},   // spaces stripped
+		{"+6289660517046", "+6289660517046", true}, // real number, +628 form
+		{"1234", "", false},                        // not Indonesian mobile
+		{"+18005551234", "", false},                // US number
 		{"", "", false},
+		// +62 must be followed by a mobile 8 — reject double-applied country codes.
+		{"+626281299951524", "", false}, // reported bug: 62 country code double-applied
+		{"+626289507718023", "", false}, // same shape, seen failing at the radio
+		{"626281299951524", "", false},  // 62… but 62 6… → not +628
+		{"06281299951524", "", false},   // 0 + 628… → +6262… after prefixing
 	}
 	for _, c := range cases {
 		got, ok := NormalizeMSISDN(c.in)

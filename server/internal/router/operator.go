@@ -37,11 +37,16 @@ var DefaultPrefixes = map[string]models.Operator{
 
 var (
 	stripRe = regexp.MustCompile(`[\s\-().]+`)
-	e164Re  = regexp.MustCompile(`^\+62\d{8,13}$`)
+	// Indonesian mobile numbers are ALWAYS +62 8xx… — every mobile prefix starts with 8
+	// (0811, 0812, …). Requiring the 8 rejects malformed inputs like +626281299951524
+	// (a national number that got the 62 country code double-applied) which the old
+	// `^\+62\d{8,13}$` accepted and then failed at the radio (F-report error).
+	e164Re = regexp.MustCompile(`^\+628\d{7,12}$`)
 )
 
-// NormalizeMSISDN converts any Indonesian mobile input to canonical E.164 (+62...).
-// Returns ("", false) if the number cannot be normalized to a valid ID mobile number.
+// NormalizeMSISDN converts any Indonesian mobile input to canonical E.164 (+628…).
+// Accepts 08…, 8…, 62…, +62… forms. Returns ("", false) if the result is not a valid
+// Indonesian mobile number (must be +62 followed by an 8-prefixed subscriber number).
 func NormalizeMSISDN(raw string) (string, bool) {
 	s := stripRe.ReplaceAllString(strings.TrimSpace(raw), "")
 	switch {

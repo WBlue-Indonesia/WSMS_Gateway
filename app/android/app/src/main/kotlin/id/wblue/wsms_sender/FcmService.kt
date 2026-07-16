@@ -93,8 +93,12 @@ class FcmService : FirebaseMessagingService() {
                         store.addActivity("delivered", "Delivered", messageId.take(8))
                     }
                     else -> {
-                        api.delivery(messageId, "failed", reason)
-                        store.addActivity("failed", "Delivery failed", reason)
+                        // SENT PendingIntent returned an error → the SMS never left the radio.
+                        // Clear the ledger so a server retry of this id re-sends, and report a
+                        // retryable status (the server re-queues up to MaxAttempts).
+                        store.clearLedgerPhase(messageId)
+                        api.delivery(messageId, "send_failed", reason)
+                        store.addActivity("failed", "Send failed (will retry)", reason)
                         done.countDown()
                     }
                 }

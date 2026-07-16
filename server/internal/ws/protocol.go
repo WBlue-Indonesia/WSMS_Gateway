@@ -81,14 +81,17 @@ const (
 // DeliveryReportData carries the radio/network outcome.
 type DeliveryReportData struct {
 	MessageID string `json:"message_id"`
-	Status    string `json:"status"` // "sent" | "delivered" | "failed"
+	Status    string `json:"status"` // "sent" | "delivered" | "failed" | "send_failed"
 	Reason    string `json:"reason,omitempty"`
 }
 
 const (
 	DRSent      = "sent"
 	DRDelivered = "delivered"
-	DRFailed    = "failed"
+	DRFailed    = "failed" // terminal: message may have left the radio — do NOT resend
+	// DRSendFailed: the SENT PendingIntent returned an error, so the SMS never left the
+	// radio (Android contract). Safe to re-queue for another attempt (F5), like a reject.
+	DRSendFailed = "send_failed"
 )
 
 // SimState is the server's authoritative view of one SIM, pushed to the owning device

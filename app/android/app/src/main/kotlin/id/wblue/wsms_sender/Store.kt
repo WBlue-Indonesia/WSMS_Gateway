@@ -29,6 +29,9 @@ class Store(ctx: Context) {
     // ---- send ledger (dedup, F1/F5) ----
     fun ledgerPhase(messageId: String): String? = prefs.getString("L_$messageId", null)
     fun setLedgerPhase(messageId: String, phase: String) { prefs.edit().putString("L_$messageId", phase).apply() }
+    // Drop the ledger entry so a server retry of the SAME message id actually re-sends
+    // (used when the radio rejected the send — nothing left the device).
+    fun clearLedgerPhase(messageId: String) { prefs.edit().remove("L_$messageId").apply() }
 
     // ---- latest sim state (from the server) ----
     var simsJson: String get() = prefs.getString("sims", "[]") ?: "[]"; set(v) { prefs.edit().putString("sims", v).apply() }

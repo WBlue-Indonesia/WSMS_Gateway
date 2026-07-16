@@ -246,6 +246,11 @@ func (d *Dispatcher) onDeliveryReport(ctx context.Context, dr ws.DeliveryReportD
 		d.advanceIfPinned(ctx, dr.MessageID, models.MsgSent, models.EvSent, dr.Reason)
 	case ws.DRDelivered:
 		d.advanceIfPinned(ctx, dr.MessageID, models.MsgDelivered, models.EvDelivered, dr.Reason)
+	case ws.DRSendFailed:
+		// The radio rejected the send (SENT PendingIntent error) — the SMS never left the
+		// device, so it is safe to release the reserve and re-queue for another attempt,
+		// exactly like an ack "rejected". Bounded by MaxAttempts, then terminal FAILED.
+		d.rejectAndRequeue(ctx, dr.MessageID, dr.Reason)
 	case ws.DRFailed:
 		// Terminal failure. Release the quota reserve but do NOT re-route (send may have
 		// partially left the radio — safety over completeness).
